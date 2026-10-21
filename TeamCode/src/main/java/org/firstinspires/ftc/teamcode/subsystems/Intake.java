@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 /**
@@ -24,6 +25,8 @@ public class Intake {
     public Intake(HardwareMap hwMap, String motorName) {
         motor = hwMap.get(DcMotorEx.class, motorName);
         motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        // Reversed so positive power pulls game pieces in on this robot
+        motor.setDirection(DcMotorSimple.Direction.REVERSE);
         stop();
     }
 
