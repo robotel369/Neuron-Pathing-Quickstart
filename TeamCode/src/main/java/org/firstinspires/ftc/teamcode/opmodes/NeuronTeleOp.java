@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.neuronpathing.NeuronDrive;
 import org.firstinspires.ftc.teamcode.neuronpathing.NeuronLocalizer;
+import org.firstinspires.ftc.teamcode.neuronpathing.Pose2D;
 import org.firstinspires.ftc.teamcode.subsystems.Gate;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Transfer;
@@ -29,6 +30,10 @@ public class NeuronTeleOp extends LinearOpMode {
         Intake intake = new Intake(hardwareMap);
         Transfer transfer = new Transfer(hardwareMap);
 
+        // Calibrate the Pinpoint during init, before the first drive.update() reads the pose
+        localizer.setPosition(new Pose2D(0, 0, 0));
+        localizer.calibrate(true);
+
         waitForStart();
 
         while (opModeIsActive()) {
@@ -51,13 +56,19 @@ public class NeuronTeleOp extends LinearOpMode {
             }
             intake.update();
 
-            // Transfer control using dpad: hold up to feed, hold down to reverse
-            if (gamepad1.dpad_up) {
-                transfer.feed();
-            } else if (gamepad1.dpad_down) {
-                transfer.reverse();
-            } else {
-                transfer.stop();
+            // Transfer toggle on dpad edge press: up starts/stops feeding, down starts/stops reversing
+            if (gamepad1.dpadUpWasPressed()) {
+                if (transfer.state == Transfer.State.FEEDING) {
+                    transfer.stop();
+                } else {
+                    transfer.feed();
+                }
+            } else if (gamepad1.dpadDownWasPressed()) {
+                if (transfer.state == Transfer.State.REVERSING) {
+                    transfer.stop();
+                } else {
+                    transfer.reverse();
+                }
             }
             transfer.update();
 

@@ -244,20 +244,20 @@ public class NeuronDrive {
         backRight.setPower(Range.clip(rBPower, -maxSpeed, maxSpeed));
     }
 
-    /** Basic robot-centric mecanum drive from gamepad sticks -- for a manual TeleOp. */
+    /** Basic robot-centric mecanum drive from gamepad sticks -- for a manual TeleOp.
+     *  Left stick drives/strafes, right stick x only turns. */
     public void drive(Gamepad gamepad) {
         maxSpeed = 1;
         double ly = -gamepad.left_stick_y;
-        double ry = -gamepad.right_stick_y;
         double lx = gamepad.left_stick_x;
         double rx = gamepad.right_stick_x;
 
-        setDrivePower(
-                ly + ry + rx + lx,
-                ly + ry - rx - lx,
-                ly + ry + rx - lx,
-                ly + ry - rx + lx
-        );
+        setDrivePower(normalize(
+                ly + rx + lx,
+                ly - rx - lx,
+                ly + rx - lx,
+                ly - rx + lx
+        ));
     }
 
     /**
