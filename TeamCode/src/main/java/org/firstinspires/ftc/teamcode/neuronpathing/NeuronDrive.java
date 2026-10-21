@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.neuronpathing;
 import static org.firstinspires.ftc.teamcode.neuronpathing.MathFunc.angleWrap;
 
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.Range;

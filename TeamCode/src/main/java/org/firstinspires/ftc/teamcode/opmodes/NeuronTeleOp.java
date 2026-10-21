@@ -8,6 +8,7 @@ import org.firstinspires.ftc.teamcode.neuronpathing.NeuronLocalizer;
 import org.firstinspires.ftc.teamcode.subsystems.Gate;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 
+
 /**
  * Manual TeleOp on top of Neuron Pathing. Drive with the left stick's y/x and
  * rotate with the right stick's x -- robot-centric, no field-oriented math, so
@@ -32,8 +33,8 @@ public class NeuronTeleOp extends LinearOpMode {
             drive.drive(gamepad1);
             drive.update();
 
-            // Gate toggle on 'A' button edge press
-            if (gamepad1.aWasPressed()) {
+            // Gate toggle on R1 (right bumper) edge press: each press flips open/closed
+            if (gamepad1.rightBumperWasPressed()) {
                 gate.toggle();
             }
             gate.update();
