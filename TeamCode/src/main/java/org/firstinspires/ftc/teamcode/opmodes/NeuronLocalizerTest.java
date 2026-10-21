@@ -17,7 +17,7 @@ import org.firstinspires.ftc.teamcode.neuronpathing.Pose2D;
 public class NeuronLocalizerTest extends LinearOpMode {
     @Override
     public void runOpMode() {
-        NeuronLocalizer localizer = new NeuronLocalizer(hardwareMap, telemetry, /*xOffsetMm=*/0, /*yOffsetMm=*/0);
+        NeuronLocalizer localizer = new NeuronLocalizer(hardwareMap, telemetry, /*xOffsetMm=*/144.0, /*yOffsetMm=*/-144.0);
         localizer.setPosition(new Pose2D(0, 0, 0));
         localizer.calibrate(true);
 
