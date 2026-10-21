@@ -7,6 +7,7 @@ import org.firstinspires.ftc.teamcode.neuronpathing.NeuronDrive;
 import org.firstinspires.ftc.teamcode.neuronpathing.NeuronLocalizer;
 import org.firstinspires.ftc.teamcode.subsystems.Gate;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
+import org.firstinspires.ftc.teamcode.subsystems.Transfer;
 
 
 /**
@@ -26,6 +27,7 @@ public class NeuronTeleOp extends LinearOpMode {
         NeuronDrive drive = new NeuronDrive(hardwareMap, localizer, /*trackWidthIn=*/405.0 / 25.4);
         Gate gate = new Gate(hardwareMap);
         Intake intake = new Intake(hardwareMap);
+        Transfer transfer = new Transfer(hardwareMap);
 
         waitForStart();
 
@@ -49,11 +51,22 @@ public class NeuronTeleOp extends LinearOpMode {
             }
             intake.update();
 
+            // Transfer control using dpad: hold up to feed, hold down to reverse
+            if (gamepad1.dpad_up) {
+                transfer.feed();
+            } else if (gamepad1.dpad_down) {
+                transfer.reverse();
+            } else {
+                transfer.stop();
+            }
+            transfer.update();
+
             telemetry.addData("x", drive.pose.x);
             telemetry.addData("y", drive.pose.y);
             telemetry.addData("heading (deg)", Math.toDegrees(drive.pose.h));
             telemetry.addData("gate", gate.state);
             telemetry.addData("intake", intake.state);
+            telemetry.addData("transfer", transfer.state);
             telemetry.update();
         }
     }
