@@ -31,11 +31,9 @@ public class Flywheel {
     public static boolean REVERSED = true;
 
     // ---- tunable PIDF velocity gains (power units per tick/sec) ------------------
-    // Starting values come from the previous two-motor Shooter (kP 0.02, kF 0.00085)
-    // for the same flywheel. kF is per-motor so it carries over to one motor. With
-    // one motor the flywheel gets half the torque, so the same kP reacts about half
-    // as fast; raise kP toward 0.04 for the same response if it stays stable.
-    public static double kP = 0.02, kI = 0.0, kD = 0.0;
+    // Tuned on the robot, starting from the previous two-motor Shooter's gains
+    // (kP 0.02, kF 0.00085) for the same flywheel.
+    public static double kP = 0.03, kI = 0.0, kD = 0.0;
     /** F (feedforward): power per tick/sec of target. Tune first, with kP/kI/kD at 0. */
     public static double kF = 0.00085;
     /** Static feedforward: constant power to overcome friction whenever the target isn't 0. */
