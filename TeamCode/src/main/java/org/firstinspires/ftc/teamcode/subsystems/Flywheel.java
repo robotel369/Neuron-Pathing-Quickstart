@@ -11,10 +11,10 @@ import org.firstinspires.ftc.teamcode.neuronpathing.PID;
 
 /**
  * Subsystem for a single-motor flywheel with PIDF velocity control.
- * Speed is read from the encoder cable plugged into the flywheel motor's own
- * encoder port. Power each loop = F (kF * target + kS) + PID on the velocity
- * error. Gains are @Config so they show up in FTC Dashboard; copy the
- * tuned values back into this file, since Dashboard changes don't persist.
+ * Speed is read in encoder ticks per second from the encoder cable plugged into
+ * the flywheel motor's own encoder port. Power each loop = F (kF * target + kS)
+ * + PID on the velocity error. Gains are @Config so they show up in FTC Dashboard;
+ * copy the tuned values back into this file, since Dashboard changes don't persist.
  * Follows Neuron Pathing subsystem conventions.
  */
 @Config
@@ -27,21 +27,18 @@ public class Flywheel {
     private final DcMotorEx motor;
     public State state = State.STOPPED;
 
-    /** Encoder ticks per flywheel revolution. 28 for a bare goBILDA/REV motor encoder;
-     *  multiply by any gear ratio between the motor and the flywheel. */
-    public static double TICKS_PER_REV = 28;
-    public static boolean REVERSED = false;
+    public static boolean REVERSED = true;
 
-    // ---- tunable PIDF velocity gains (power units per RPM) -----------------------
-    public static double kP = 0.0005, kI = 0.0, kD = 0.0;
-    /** F (feedforward): power per RPM of target. Tune first, with kP/kI/kD at 0. */
-    public static double kF = 0.00017;
+    // ---- tunable PIDF velocity gains (power units per tick/sec) ------------------
+    public static double kP = 0.001, kI = 0.0, kD = 0.0;
+    /** F (feedforward): power per tick/sec of target. Tune first, with kP/kI/kD at 0. */
+    public static double kF = 0.00036;
     /** Static feedforward: constant power to overcome friction whenever the target isn't 0. */
     public static double kS = 0.0;
 
     private final PID pid = new PID(kP, kI, kD);
 
-    private double targetRpm = 0;
+    private double targetTicksPerSec = 0;
     private double lastPower = 0;
 
     public Flywheel(HardwareMap hwMap, String motorName) {
@@ -58,40 +55,40 @@ public class Flywheel {
         this(hwMap, "flywheel");
     }
 
-    public void setTargetRpm(double rpm) {
-        targetRpm = Math.max(0, rpm);
-        state = targetRpm > 0 ? State.SPINNING : State.STOPPED;
+    public void setTargetTicksPerSec(double ticksPerSec) {
+        targetTicksPerSec = Math.max(0, ticksPerSec);
+        state = targetTicksPerSec > 0 ? State.SPINNING : State.STOPPED;
     }
 
     public void stop() {
-        setTargetRpm(0);
+        setTargetTicksPerSec(0);
     }
 
-    public double getTargetRpm() {
-        return targetRpm;
+    public double getTargetTicksPerSec() {
+        return targetTicksPerSec;
     }
 
-    public double getRpm() {
-        return motor.getVelocity() * 60.0 / TICKS_PER_REV;
+    public double getTicksPerSec() {
+        return motor.getVelocity();
     }
 
     public double getError() {
-        return targetRpm - getRpm();
+        return targetTicksPerSec - getTicksPerSec();
     }
 
     public double getPower() {
         return lastPower;
     }
 
-    public boolean atSpeed(double toleranceRpm) {
-        return targetRpm > 0 && Math.abs(getError()) < toleranceRpm;
+    public boolean atSpeed(double toleranceTicksPerSec) {
+        return targetTicksPerSec > 0 && Math.abs(getError()) < toleranceTicksPerSec;
     }
 
     /**
      * Called continuously in TeleOp and Autonomous loops. Runs the velocity controller.
      */
     public void update() {
-        if (targetRpm <= 0) {
+        if (targetTicksPerSec <= 0) {
             pid.resetIntegral();
             lastPower = 0;
             motor.setPower(0);
@@ -99,7 +96,7 @@ public class Flywheel {
         }
 
         pid.updatePID(kP, kI, kD);
-        double power = kF * targetRpm + kS + pid.update(getError());
+        double power = kF * targetTicksPerSec + kS + pid.update(getError());
         // Never drive the flywheel backwards to slow it down; let it coast instead
         lastPower = Range.clip(power, 0, 1);
         motor.setPower(lastPower);
