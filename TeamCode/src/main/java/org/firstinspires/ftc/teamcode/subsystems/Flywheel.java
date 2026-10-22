@@ -36,6 +36,13 @@ public class Flywheel {
     /** Static feedforward: constant power to overcome friction whenever the target isn't 0. */
     public static double kS = 0.0;
 
+    // ---- dampening (active slowing down) -----------------------------------------
+    /** Max reverse power the controller may apply when the flywheel is faster than the
+     *  target, e.g. when the target drops. 0 = coast down only. Keep it small to spare the gearbox. */
+    public static double MAX_BRAKE_POWER = 0.2;
+    /** When the target is 0: true = motor brakes to a stop, false = flywheel coasts. */
+    public static boolean BRAKE_WHEN_STOPPED = false;
+
     private final PID pid = new PID(kP, kI, kD);
 
     private double targetTicksPerSec = 0;
@@ -88,6 +95,10 @@ public class Flywheel {
      * Called continuously in TeleOp and Autonomous loops. Runs the velocity controller.
      */
     public void update() {
+        motor.setZeroPowerBehavior(BRAKE_WHEN_STOPPED
+                ? DcMotor.ZeroPowerBehavior.BRAKE
+                : DcMotor.ZeroPowerBehavior.FLOAT);
+
         if (targetTicksPerSec <= 0) {
             pid.resetIntegral();
             lastPower = 0;
@@ -97,8 +108,8 @@ public class Flywheel {
 
         pid.updatePID(kP, kI, kD);
         double power = kF * targetTicksPerSec + kS + pid.update(getError());
-        // Never drive the flywheel backwards to slow it down; let it coast instead
-        lastPower = Range.clip(power, 0, 1);
+        // Allow a little reverse power to slow down faster when above target
+        lastPower = Range.clip(power, -MAX_BRAKE_POWER, 1);
         motor.setPower(lastPower);
     }
 }
