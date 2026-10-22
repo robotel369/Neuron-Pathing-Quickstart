@@ -39,7 +39,7 @@ public class Flywheel {
     // ---- dampening (active slowing down) -----------------------------------------
     /** Max reverse power the controller may apply when the flywheel is faster than the
      *  target, e.g. when the target drops. 0 = coast down only. Keep it small to spare the gearbox. */
-    public static double MAX_BRAKE_POWER = 0.2;
+    public static double MAX_BRAKE_POWER = 0.05;
     /** When the target is 0: true = motor brakes to a stop, false = flywheel coasts. */
     public static boolean BRAKE_WHEN_STOPPED = false;
 

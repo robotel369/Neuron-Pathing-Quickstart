@@ -10,7 +10,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.subsystems.Flywheel;
 
 /**
- * Flywheel PIDF velocity tuning OpMode with FTC Dashboard integration.
+ * Flywheel PIDF velocity tuning OpMode. Runs from the Driver Station with gamepad1;
+ * FTC Dashboard is optional (graphs and live gain tuning) and not needed to init.
  *
  * Triangle: toggle the flywheel between 0 and TARGET_TICKS_PER_SEC (fixed-speed tuning).
  * L3 (left stick press): toggle dynamic tuning, where the target sweeps smoothly
@@ -21,7 +22,7 @@ import org.firstinspires.ftc.teamcode.subsystems.Flywheel;
  * error in the Graph view. Tune kF first with kP/kI/kD at 0, then add kP, then kI/kD.
  */
 @Config
-@TeleOp(name = "Flywheel Tuning (FTC Dashboard)", group = "Tuning")
+@TeleOp(name = "Flywheel Tuning", group = "Tuning")
 public class FlywheelTuningOpMode extends LinearOpMode {
 
     public static double TARGET_TICKS_PER_SEC = 500;
@@ -40,12 +41,29 @@ public class FlywheelTuningOpMode extends LinearOpMode {
 
     @Override
     public void runOpMode() {
-        // Setup dual telemetry (Driver Station + FTC Dashboard)
-        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
+        // Setup dual telemetry (Driver Station + FTC Dashboard) only if Dashboard is running,
+        // so the OpMode still inits from the Driver Station when Dashboard is off
+        FtcDashboard dashboard = FtcDashboard.getInstance();
+        if (dashboard != null) {
+            telemetry = new MultipleTelemetry(telemetry, dashboard.getTelemetry());
+        }
 
-        Flywheel flywheel = new Flywheel(hardwareMap);
+        Flywheel flywheel;
+        try {
+            flywheel = new Flywheel(hardwareMap);
+        } catch (IllegalArgumentException e) {
+            telemetry.addLine("No motor named \"flywheel\" in the active configuration.");
+            telemetry.addLine("Add it on the Driver Station (Configure Robot), then re-init.");
+            telemetry.update();
+            waitForStart();
+            return;
+        }
         Mode mode = Mode.STOPPED;
         ElapsedTime dynamicTimer = new ElapsedTime();
+
+        telemetry.addLine("Ready. Press START, then use gamepad1:");
+        telemetry.addLine("Triangle = toggle fixed target, L3 = toggle dynamic sweep");
+        telemetry.update();
 
         waitForStart();
 
