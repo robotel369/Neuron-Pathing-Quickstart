@@ -28,8 +28,10 @@ public class FlywheelTuningOpMode extends LinearOpMode {
     public static double TARGET_TICKS_PER_SEC = 500;
     public static double DYNAMIC_MIN_TICKS_PER_SEC = 500;
     public static double DYNAMIC_MAX_TICKS_PER_SEC = 700;
-    /** Seconds for one full sweep min -> max -> min. */
+    /** Seconds spent ramping in one full sweep min -> max -> min (not counting the holds). */
     public static double DYNAMIC_PERIOD_S = 6;
+    /** Seconds to hold the target flat at the top and at the bottom of each sweep. */
+    public static double DYNAMIC_HOLD_S = 2;
     /** Error (ticks/sec) that counts as "at speed" in telemetry. */
     public static double AT_SPEED_TOLERANCE_TICKS_PER_SEC = 25;
 
@@ -83,9 +85,20 @@ public class FlywheelTuningOpMode extends LinearOpMode {
                     flywheel.setTargetTicksPerSec(TARGET_TICKS_PER_SEC);
                     break;
                 case DYNAMIC:
-                    // Cosine sweep: smooth speed changes with no sudden jumps at the ends
-                    double phase = 2 * Math.PI * dynamicTimer.seconds() / DYNAMIC_PERIOD_S;
-                    double blend = (1 - Math.cos(phase)) / 2;
+                    // Cosine ramps with flat holds: up, hold at max, down, hold at min
+                    double ramp = DYNAMIC_PERIOD_S / 2;
+                    double hold = Math.max(0, DYNAMIC_HOLD_S);
+                    double t = dynamicTimer.seconds() % (2 * ramp + 2 * hold);
+                    double blend;
+                    if (t < ramp) {
+                        blend = (1 - Math.cos(Math.PI * t / ramp)) / 2;
+                    } else if (t < ramp + hold) {
+                        blend = 1;
+                    } else if (t < 2 * ramp + hold) {
+                        blend = (1 + Math.cos(Math.PI * (t - ramp - hold) / ramp)) / 2;
+                    } else {
+                        blend = 0;
+                    }
                     flywheel.setTargetTicksPerSec(DYNAMIC_MIN_TICKS_PER_SEC + blend * (DYNAMIC_MAX_TICKS_PER_SEC - DYNAMIC_MIN_TICKS_PER_SEC));
                     break;
                 case STOPPED:

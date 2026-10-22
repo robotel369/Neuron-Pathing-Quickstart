@@ -40,17 +40,26 @@ public class Flywheel {
     public static double kF = 0.00085;
     /** Static feedforward: constant power to overcome friction whenever the target isn't 0. */
     public static double kS = 0.0;
+    /** Acceleration feedforward: power per (tick/sec per second) of target change. Adds power
+     *  while the target rises and removes it while it falls, so the flywheel eases into peaks
+     *  instead of overshooting. Start at 0, try 0.0005, and raise in small steps (up to ~0.003). */
+    public static double kA = 0.0;
+    /** Cap on the kA term, so a sudden target jump (e.g. 0 -> 500) can't spike the power. */
+    public static double MAX_ACCEL_POWER = 0.3;
     /** Low-pass filter on the derivative term, 0 to <1. Higher = smoother D. */
     public static double D_FILTER = 0.8;
 
     // ---- dampening (active slowing down) -----------------------------------------
     /** Max reverse power the controller may apply when the flywheel is faster than the
      *  target, e.g. when the target drops. 0 = coast down only. Keep it small to spare the gearbox. */
-    public static double MAX_BRAKE_POWER = 0.05;
+    public static double MAX_BRAKE_POWER = 0.12;
     /** Only brake when the flywheel is more than this many ticks/sec above the target.
      *  Inside this band power can't go below 0, so encoder noise near the target
      *  can't flicker the motor between driving and braking. */
-    public static double BRAKE_THRESHOLD = 40;
+    public static double BRAKE_THRESHOLD = 20;
+    /** Brake power ramps from 0 at BRAKE_THRESHOLD up to MAX_BRAKE_POWER over this many
+     *  more ticks/sec of overspeed, so braking eases in instead of switching on and off. */
+    public static double BRAKE_RAMP = 60;
     /** When the target is 0: true = motor brakes to a stop, false = flywheel coasts. */
     public static boolean BRAKE_WHEN_STOPPED = false;
 
@@ -61,6 +70,7 @@ public class Flywheel {
     private final ElapsedTime loopTimer = new ElapsedTime();
 
     private double targetTicksPerSec = 0;
+    private double lastTargetTicksPerSec = 0;
     private double filteredTicksPerSec = 0;
     private double lastError = 0;
     private double filteredDerivative = 0;
@@ -131,6 +141,9 @@ public class Flywheel {
                 : DcMotor.ZeroPowerBehavior.FLOAT);
 
         double error = getError();
+        double targetRate = (dt > 0) ? (targetTicksPerSec - lastTargetTicksPerSec) / dt : 0;
+        lastTargetTicksPerSec = targetTicksPerSec;
+
         if (targetTicksPerSec <= 0) {
             integral = 0;
             filteredDerivative = 0;
@@ -145,15 +158,21 @@ public class Flywheel {
         filteredDerivative = dFilter * filteredDerivative + (1 - dFilter) * rawDerivative;
         lastError = error;
 
+        // Brake eases in: 0 up to BRAKE_THRESHOLD overspeed, then ramps to MAX_BRAKE_POWER
+        double overspeed = -error;
+        double brakeFraction = (BRAKE_RAMP > 0)
+                ? Range.clip((overspeed - BRAKE_THRESHOLD) / BRAKE_RAMP, 0, 1)
+                : (overspeed > BRAKE_THRESHOLD ? 1 : 0);
+        double minPower = -MAX_BRAKE_POWER * brakeFraction;
+
         // Only build up I while the output isn't already maxed out, so it can't wind up
-        if (lastPower < 1 && lastPower > -MAX_BRAKE_POWER) {
+        if (lastPower < 1 && lastPower > minPower) {
             integral += error * dt;
         }
 
-        double power = kF * targetTicksPerSec + kS
+        double accelPower = Range.clip(kA * targetRate, -MAX_ACCEL_POWER, MAX_ACCEL_POWER);
+        double power = kF * targetTicksPerSec + kS + accelPower
                 + kP * error + kI * integral + kD * filteredDerivative;
-        // Allow a little reverse power only when clearly above target; otherwise just coast
-        double minPower = (-error > BRAKE_THRESHOLD) ? -MAX_BRAKE_POWER : 0;
         lastPower = Range.clip(power, minPower, 1);
         motor.setPower(lastPower);
     }
