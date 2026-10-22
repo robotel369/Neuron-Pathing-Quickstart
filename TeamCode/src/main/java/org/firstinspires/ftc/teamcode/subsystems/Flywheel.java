@@ -74,6 +74,7 @@ public class Flywheel {
     private double filteredDerivative = 0;
     private double integral = 0;
     private double lastPower = 0;
+    private boolean coasting = false;
 
     public Flywheel(HardwareMap hwMap, String motorName) {
         motor = hwMap.get(DcMotorEx.class, motorName);
@@ -92,6 +93,21 @@ public class Flywheel {
     public void setTargetTicksPerSec(double ticksPerSec) {
         targetTicksPerSec = Math.max(0, ticksPerSec);
         state = targetTicksPerSec > 0 ? State.SPINNING : State.STOPPED;
+        coasting = false;
+    }
+
+    /**
+     * Lowers the target, but lets the flywheel coast down to it with 0 power (as if the
+     * target were 0) instead of braking, to save battery. Normal PIDF takes over once the
+     * speed has dropped to the new target.
+     */
+    public void coastDownTo(double ticksPerSec) {
+        setTargetTicksPerSec(ticksPerSec);
+        coasting = true;
+    }
+
+    public boolean isCoasting() {
+        return coasting;
     }
 
     public void stop() {
@@ -142,7 +158,12 @@ public class Flywheel {
         double targetRate = (dt > 0) ? (targetTicksPerSec - lastTargetTicksPerSec) / dt : 0;
         lastTargetTicksPerSec = targetTicksPerSec;
 
-        if (targetTicksPerSec <= 0) {
+        // Coasting down after coastDownTo(): stay at 0 power until we reach the new target
+        if (coasting && filteredTicksPerSec <= targetTicksPerSec) {
+            coasting = false;
+        }
+
+        if (targetTicksPerSec <= 0 || coasting) {
             integral = 0;
             filteredDerivative = 0;
             lastError = error;

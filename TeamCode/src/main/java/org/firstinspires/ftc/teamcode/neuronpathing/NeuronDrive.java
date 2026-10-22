@@ -244,10 +244,13 @@ public class NeuronDrive {
         backRight.setPower(Range.clip(rBPower, -maxSpeed, maxSpeed));
     }
 
+    /** Max wheel power for drive(), i.e. manual TeleOp driving. */
+    public static double teleOpMaxSpeed = 0.6;
+
     /** Basic robot-centric mecanum drive from gamepad sticks -- for a manual TeleOp.
      *  Left stick drives/strafes, right stick x only turns. */
     public void drive(Gamepad gamepad) {
-        maxSpeed = 1;
+        maxSpeed = teleOpMaxSpeed;
         double ly = -gamepad.left_stick_y;
         double lx = gamepad.left_stick_x;
         double rx = gamepad.right_stick_x;
@@ -294,6 +297,14 @@ public class NeuronDrive {
 
     public boolean isBusy() {
         return driveState != DriveState.PARK && driveState != DriveState.HOLD_POS;
+    }
+
+    /** Where the current move ends: the last point of the active spline, or the goToPoint target. */
+    public Pose2D getFinalTarget() {
+        if (spline != null && !spline.points.isEmpty()) {
+            return spline.points.get(spline.points.size() - 1);
+        }
+        return targetPoint;
     }
 
     /** Drive straight to a single point using the PID hold controller (no spline). */
