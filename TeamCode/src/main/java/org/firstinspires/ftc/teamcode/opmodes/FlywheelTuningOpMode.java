@@ -97,6 +97,7 @@ public class FlywheelTuningOpMode extends LinearOpMode {
             telemetry.addData("mode", mode);
             telemetry.addData("targetTicksPerSec", flywheel.getTargetTicksPerSec());
             telemetry.addData("ticksPerSec", flywheel.getTicksPerSec());
+            telemetry.addData("rawTicksPerSec", flywheel.getRawTicksPerSec());
             telemetry.addData("error", flywheel.getError());
             telemetry.addData("power", flywheel.getPower());
             telemetry.addData("kP", Flywheel.kP);
