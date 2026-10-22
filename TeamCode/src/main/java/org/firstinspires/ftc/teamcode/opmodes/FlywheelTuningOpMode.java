@@ -10,15 +10,15 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.subsystems.Flywheel;
 
 /**
- * Flywheel velocity tuning OpMode with FTC Dashboard integration.
+ * Flywheel PIDF velocity tuning OpMode with FTC Dashboard integration.
  *
  * Triangle: toggle the flywheel between 0 and TARGET_RPM (fixed-speed tuning).
  * L3 (left stick press): toggle dynamic tuning, where the target sweeps smoothly
  * between DYNAMIC_MIN_RPM and DYNAMIC_MAX_RPM to mimic shooting from changing distances.
  *
- * Connect to FTC Dashboard at http://192.168.43.1:8080/dash. Tune the gains under
+ * Connect to FTC Dashboard at http://192.168.43.1:8080/dash. Tune kP/kI/kD/kF under
  * "Flywheel" and the targets under "FlywheelTuningOpMode"; plot targetRpm, rpm and
- * error in the Graph view.
+ * error in the Graph view. Tune kF first with kP/kI/kD at 0, then add kP, then kI/kD.
  */
 @Config
 @TeleOp(name = "Flywheel Tuning (FTC Dashboard)", group = "Tuning")
@@ -81,6 +81,10 @@ public class FlywheelTuningOpMode extends LinearOpMode {
             telemetry.addData("rpm", flywheel.getRpm());
             telemetry.addData("error", flywheel.getError());
             telemetry.addData("power", flywheel.getPower());
+            telemetry.addData("kP", Flywheel.kP);
+            telemetry.addData("kI", Flywheel.kI);
+            telemetry.addData("kD", Flywheel.kD);
+            telemetry.addData("kF", Flywheel.kF);
             telemetry.addData("atSpeed", flywheel.atSpeed(AT_SPEED_TOLERANCE_RPM));
             telemetry.update();
         }

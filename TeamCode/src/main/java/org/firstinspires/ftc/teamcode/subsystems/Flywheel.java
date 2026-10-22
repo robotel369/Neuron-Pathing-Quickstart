@@ -10,10 +10,10 @@ import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.teamcode.neuronpathing.PID;
 
 /**
- * Subsystem for a single-motor flywheel with velocity control.
+ * Subsystem for a single-motor flywheel with PIDF velocity control.
  * Speed is read from the encoder cable plugged into the flywheel motor's own
- * encoder port. Power each loop = feedforward (kV * target + kS) + PID on the
- * velocity error. Gains are @Config so they show up in FTC Dashboard; copy the
+ * encoder port. Power each loop = F (kF * target + kS) + PID on the velocity
+ * error. Gains are @Config so they show up in FTC Dashboard; copy the
  * tuned values back into this file, since Dashboard changes don't persist.
  * Follows Neuron Pathing subsystem conventions.
  */
@@ -32,12 +32,12 @@ public class Flywheel {
     public static double TICKS_PER_REV = 28;
     public static boolean REVERSED = false;
 
-    // ---- tunable velocity gains (power units per RPM) ----------------------------
-    /** Feedforward: power per RPM of target. Tune first, with the PID gains at 0. */
-    public static double kV = 0.00017;
-    /** Feedforward: constant power to overcome friction whenever the target isn't 0. */
-    public static double kS = 0.0;
+    // ---- tunable PIDF velocity gains (power units per RPM) -----------------------
     public static double kP = 0.0005, kI = 0.0, kD = 0.0;
+    /** F (feedforward): power per RPM of target. Tune first, with kP/kI/kD at 0. */
+    public static double kF = 0.00017;
+    /** Static feedforward: constant power to overcome friction whenever the target isn't 0. */
+    public static double kS = 0.0;
 
     private final PID pid = new PID(kP, kI, kD);
 
@@ -99,7 +99,7 @@ public class Flywheel {
         }
 
         pid.updatePID(kP, kI, kD);
-        double power = kV * targetRpm + kS + pid.update(getError());
+        double power = kF * targetRpm + kS + pid.update(getError());
         // Never drive the flywheel backwards to slow it down; let it coast instead
         lastPower = Range.clip(power, 0, 1);
         motor.setPower(lastPower);
