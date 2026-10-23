@@ -32,7 +32,7 @@ public class Shooter {
     public State state = State.IDLE;
 
     /** Default flywheel speed for a shot, in ticks/sec. */
-    public static double SHOOT_TICKS_PER_SEC = 600;
+    public static double SHOOT_TICKS_PER_SEC = 1500;
     /** Flywheel counts as ready when within this many ticks/sec of the target. */
     public static double AT_SPEED_TOLERANCE_TICKS_PER_SEC = 25;
     /** Shoot anyway if the flywheel hasn't reached speed by then, so auto can't get stuck. */
