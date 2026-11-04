@@ -245,15 +245,23 @@ public class NeuronDrive {
     }
 
     /** Max wheel power for drive(), i.e. manual TeleOp driving. */
-    public static double teleOpMaxSpeed = 0.6;
+    public static double teleOpMaxSpeed = 0.75;
 
     /** Basic robot-centric mecanum drive from gamepad sticks -- for a manual TeleOp.
      *  Left stick drives/strafes, right stick x only turns. */
     public void drive(Gamepad gamepad) {
-        maxSpeed = teleOpMaxSpeed;
-        double ly = -gamepad.left_stick_y;
-        double lx = gamepad.left_stick_x;
-        double rx = gamepad.right_stick_x;
+        drive(-gamepad.left_stick_y, gamepad.left_stick_x, gamepad.right_stick_x);
+    }
+
+    /** Same as drive(Gamepad), from stick values you've already read (and maybe scaled):
+     *  ly = forward, lx = strafe right, rx = turn clockwise, each -1 to 1. */
+    public void drive(double ly, double lx, double rx) {
+        drive(ly, lx, rx, teleOpMaxSpeed);
+    }
+
+    /** Same as drive(ly, lx, rx), with your own max wheel power instead of teleOpMaxSpeed. */
+    public void drive(double ly, double lx, double rx, double maxSpeed) {
+        this.maxSpeed = maxSpeed;
 
         setDrivePower(normalize(
                 ly + rx + lx,

@@ -2,15 +2,16 @@ package org.firstinspires.ftc.teamcode.opmodes;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.neuronpathing.NeuronDrive;
 import org.firstinspires.ftc.teamcode.neuronpathing.NeuronLocalizer;
 import org.firstinspires.ftc.teamcode.neuronpathing.Pose2D;
 import org.firstinspires.ftc.teamcode.subsystems.Flywheel;
 import org.firstinspires.ftc.teamcode.subsystems.Gate;
+import org.firstinspires.ftc.teamcode.subsystems.HeadingLight;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
-import org.firstinspires.ftc.teamcode.subsystems.Transfer;
 
 
 /**
@@ -24,24 +25,56 @@ import org.firstinspires.ftc.teamcode.subsystems.Transfer;
  */
 @TeleOp(name = "Neuron TeleOp (Basic)")
 public class NeuronTeleOp extends LinearOpMode {
+    /** Max turning power (fraction of full motor power). Normal drive power is capped
+     *  by NeuronDrive.teleOpMaxSpeed. */
+    public static double TURN_MAX_POWER = 0.6;
+    /** Max drive and turning power while cross is held. */
+    public static double BOOST_DRIVE_MAX_POWER = 1.0;
+    public static double BOOST_TURN_MAX_POWER = 0.8;
+
+    /** Max drive power: NeuronDrive.teleOpMaxSpeed normally, BOOST_DRIVE_MAX_POWER while
+     *  cross is held. WroomTeleOp overrides this; everything else it inherits from here. */
+    protected double driveMaxPower(boolean crossHeld) {
+        return crossHeld ? BOOST_DRIVE_MAX_POWER : NeuronDrive.teleOpMaxSpeed;
+    }
+
+    /** Max turning power: TURN_MAX_POWER normally, BOOST_TURN_MAX_POWER while cross is held. */
+    protected double turnMaxPower(boolean crossHeld) {
+        return crossHeld ? BOOST_TURN_MAX_POWER : TURN_MAX_POWER;
+    }
+
     @Override
     public void runOpMode() {
         NeuronLocalizer localizer = new NeuronLocalizer(hardwareMap, telemetry, /*xOffsetMm=*/144.0, /*yOffsetMm=*/-144.0);
         NeuronDrive drive = new NeuronDrive(hardwareMap, localizer, /*trackWidthIn=*/405.0 / 25.4);
         Gate gate = new Gate(hardwareMap);
         Intake intake = new Intake(hardwareMap);
-        Transfer transfer = new Transfer(hardwareMap);
         Flywheel flywheel = new Flywheel(hardwareMap);
-        Shooter shooter = new Shooter(flywheel, transfer, gate);
+        Shooter shooter = new Shooter(flywheel, intake, gate);
+        HeadingLight headingLight = new HeadingLight(hardwareMap);
+        ElapsedTime headingLightHoldTimer = new ElapsedTime();
 
-        // Calibrate the Pinpoint during init, before the first drive.update() reads the pose
-        localizer.setPosition(new Pose2D(0, 0, 0));
+        // Calibrate the Pinpoint during init, before the first drive.update() reads the pose.
+        // calibrate(true) resets the position to 0, so the start pose is set afterwards:
+        // wherever auto (or the last TeleOp) left the robot, or (0, 0, 0) after a restart
         localizer.calibrate(true);
+        Pose2D startPose = (Pose2D) blackboard.getOrDefault(PlannerAuto.POSE_KEY, new Pose2D(0, 0, 0));
+        localizer.setPosition(startPose);
+        telemetry.addData("start pose", "x %.1f, y %.1f, heading %.0f deg",
+                startPose.x, startPose.y, Math.toDegrees(startPose.h));
+        telemetry.update();
 
         waitForStart();
 
         while (opModeIsActive()) {
-            drive.drive(gamepad1);
+            // Drive and turn power caps come from driveMaxPower()/turnMaxPower() (cross held or not).
+            // The turn stick is scaled by turn cap / drive cap, since drive() already
+            // multiplies everything by the drive cap
+            boolean cross = gamepad1.cross;
+            double driveMax = driveMaxPower(cross);
+            double turnMax = turnMaxPower(cross);
+            double turn = gamepad1.right_stick_x * Math.min(1, turnMax / driveMax);
+            drive.drive(-gamepad1.left_stick_y, gamepad1.left_stick_x, turn, driveMax);
             drive.update();
 
             // Shoot macro on circle edge press: starts a shot, or cancels one that's running
@@ -54,47 +87,44 @@ public class NeuronTeleOp extends LinearOpMode {
             }
             shooter.update();
 
-            // Intake power follows how far the triggers are pressed: R2 intakes, L2 outtakes
-            // (the shoot macro doesn't use the intake). Small presses below 0.05 are ignored.
-            double intakePower = gamepad1.right_trigger - gamepad1.left_trigger;
-            intake.setPower(Math.abs(intakePower) > 0.05 ? intakePower : 0);
-
-            // Manual gate/transfer controls are ignored while the macro runs, so they
-            // can't close the gate or stop the transfer mid-shot
+            // Manual gate/intake controls are ignored while the macro runs, so they
+            // can't close the gate or override the intake's feed pulses mid-shot
             if (!shooter.isBusy()) {
+                // Intake power follows how far the triggers are pressed: R2 intakes, L2 outtakes.
+                // Small presses below 0.05 are ignored.
+                double intakePower = gamepad1.right_trigger - gamepad1.left_trigger;
+                intake.setPower(Math.abs(intakePower) > 0.05 ? intakePower : 0);
+
                 // Gate toggle on R1 (right bumper) edge press: each press flips open/closed
                 if (gamepad1.rightBumperWasPressed()) {
                     gate.toggle();
                 }
-
-                // Transfer toggle on dpad edge press: up starts/stops feeding, down starts/stops reversing
-                if (gamepad1.dpadUpWasPressed()) {
-                    if (transfer.state == Transfer.State.FEEDING) {
-                        transfer.stop();
-                    } else {
-                        transfer.feed();
-                    }
-                } else if (gamepad1.dpadDownWasPressed()) {
-                    if (transfer.state == Transfer.State.REVERSING) {
-                        transfer.stop();
-                    } else {
-                        transfer.reverse();
-                    }
-                }
             }
             gate.update();
             intake.update();
-            transfer.update();
             flywheel.update();
+            // Heading light: tap dpad right to turn the servo and LED fully off,
+            // hold it for 1.5 s to turn them back on
+            if (gamepad1.dpadRightWasPressed()) {
+                headingLight.disable();
+                headingLightHoldTimer.reset();
+            }
+            if (gamepad1.dpad_right && !headingLight.isEnabled()
+                    && headingLightHoldTimer.milliseconds() >= 1500) {
+                headingLight.enable();
+            }
+            headingLight.update(drive.pose.h);
+            blackboard.put(PlannerAuto.POSE_KEY, drive.pose);
 
             telemetry.addData("x", drive.pose.x);
             telemetry.addData("y", drive.pose.y);
             telemetry.addData("heading (deg)", Math.toDegrees(drive.pose.h));
             telemetry.addData("gate", gate.state);
             telemetry.addData("intake", intake.state);
-            telemetry.addData("transfer", transfer.state);
             telemetry.addData("shooter", shooter.state);
             telemetry.addData("flywheel speed", flywheel.getTicksPerSec());
+            telemetry.addData("heading light", headingLight.state);
+            telemetry.addData("heading light angle (deg)", headingLight.getServoAngleDeg());
             telemetry.update();
         }
     }
