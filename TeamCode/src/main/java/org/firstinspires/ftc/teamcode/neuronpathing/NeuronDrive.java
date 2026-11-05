@@ -94,9 +94,12 @@ public class NeuronDrive {
             motor.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         }
 
-        // Standard goBILDA/REV mecanum wiring: left side motors reversed.
-        frontLeft.setDirection(DcMotorEx.Direction.REVERSE);
-        backLeft.setDirection(DcMotorEx.Direction.REVERSE);
+        // Box of Hopes and Dreams: the right side motors are reversed. (The standard
+        // goBILDA/REV wiring, and the rookie bot, reverse the left side instead.)
+        frontLeft.setDirection(DcMotorEx.Direction.FORWARD);
+        backLeft.setDirection(DcMotorEx.Direction.FORWARD);
+        frontRight.setDirection(DcMotorEx.Direction.REVERSE);
+        backRight.setDirection(DcMotorEx.Direction.REVERSE);
     }
 
     /** Convenience constructor with the common "frontLeft/frontRight/backLeft/backRight" hardware config names. */

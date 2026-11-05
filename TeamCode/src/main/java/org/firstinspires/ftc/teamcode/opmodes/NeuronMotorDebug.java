@@ -19,11 +19,12 @@ import com.qualcomm.robotcore.util.Range;
  *      If not, fix the names in your robot configuration (or the NAMES below).
  *   2. DIRECTION: with the default (standard mecanum) directions applied, every
  *      wheel should spin so the robot would roll FORWARD.
- *      The Neuron docs assume frontLeft/backLeft are the reversed motors.
+ *      On this robot frontRight/backRight are the reversed motors (the Neuron docs
+ *      assume frontLeft/backLeft).
  *   3. ENCODERS: the encoder count shown should go UP when the wheel spins forward.
  *
  * Controls:
- *   Left bumper  : toggle "Neuron default directions" (left side reversed) vs RAW (all FORWARD)
+ *   Left bumper  : toggle "Neuron default directions" (right side reversed) vs RAW (all FORWARD)
  *   D-pad up/down: raise/lower test power (0.05 steps, 0.10 to 1.00)
  *
  * Tip: run once in RAW mode to see each motor's natural direction, then in
@@ -102,7 +103,7 @@ public class NeuronMotorDebug extends LinearOpMode {
             telemetry.addData("Active motor", active);
             telemetry.addData("Test power", "%.2f", testPower);
             telemetry.addData("Directions", useNeuronDefaults
-                    ? "NEURON DEFAULT (FL, BL reversed)"
+                    ? "NEURON DEFAULT (FR, BR reversed)"
                     : "RAW (all FORWARD)");
             telemetry.addLine();
             addMotorLine("frontLeft  (A)", frontLeft);
@@ -139,11 +140,11 @@ public class NeuronMotorDebug extends LinearOpMode {
 
     private void applyDirections() {
         if (useNeuronDefaults) {
-            // Same convention NeuronDrive's constructor uses for standard mecanum wiring
-            frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
-            backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
-            frontRight.setDirection(DcMotorSimple.Direction.FORWARD);
-            backRight.setDirection(DcMotorSimple.Direction.FORWARD);
+            // Same convention NeuronDrive's constructor uses on this robot (right side reversed)
+            frontLeft.setDirection(DcMotorSimple.Direction.FORWARD);
+            backLeft.setDirection(DcMotorSimple.Direction.FORWARD);
+            frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
+            backRight.setDirection(DcMotorSimple.Direction.REVERSE);
         } else {
             frontLeft.setDirection(DcMotorSimple.Direction.FORWARD);
             backLeft.setDirection(DcMotorSimple.Direction.FORWARD);

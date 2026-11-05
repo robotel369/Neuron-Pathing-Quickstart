@@ -73,10 +73,10 @@ public class MotorDirectionDebug extends LinearOpMode {
         DcMotorSimple.Direction rev = DcMotorSimple.Direction.REVERSE;
 
         // Directions match what the drive and subsystems set in their constructors
-        TestMotor frontLeft  = add("frontLeft",  "frontLeft  (Cross)",    rev, 1.0);
-        TestMotor frontRight = add("frontRight", "frontRight (Circle)",   fwd, 1.0);
-        TestMotor backLeft   = add("backLeft",   "backLeft   (Square)",   rev, 1.0);
-        TestMotor backRight  = add("backRight",  "backRight  (Triangle)", fwd, 1.0);
+        TestMotor frontLeft  = add("frontLeft",  "frontLeft  (Cross)",    fwd, 1.0);
+        TestMotor frontRight = add("frontRight", "frontRight (Circle)",   rev, 1.0);
+        TestMotor backLeft   = add("backLeft",   "backLeft   (Square)",   fwd, 1.0);
+        TestMotor backRight  = add("backRight",  "backRight  (Triangle)", rev, 1.0);
         TestMotor intake     = add("intake",     "intake     (Dpad up)",  rev, 1.0);
         TestMotor flywheel   = add("flywheel",   "flywheel   (Dpad right)", Flywheel.REVERSED ? rev : fwd, 1.0);
         TestMotor mainArm    = add("mainArm",    "mainArm    (Dpad down)", MainArm.REVERSED ? rev : fwd, ARM_MAX_POWER);
