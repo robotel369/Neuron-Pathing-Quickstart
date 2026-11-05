@@ -34,7 +34,10 @@ import java.util.List;
  *   mainArm      -> raise the arm (UP)
  * and its encoder should count UP. If a motor spins the wrong way, flip its direction in
  * the code (NeuronDrive, Intake, Flywheel.REVERSED, MainArm.REVERSED). If the encoder
- * counts down while the motor goes the right way, the encoder is reversed relative to it.
+ * counts down while the motor goes the right way, the encoder is reversed relative to it
+ * (for the arm, set MainArm.ENCODER_REVERSED).
+ * The arm's encoder is plugged into backLeft's encoder port, so the mainArm line reads it
+ * from there, and the backLeft line's enc/vel show the ARM, not the backLeft wheel.
  * If the wrong motor spins, fix the names/ports in the robot configuration.
  */
 @Config
@@ -54,6 +57,10 @@ public class MotorDirectionDebug extends LinearOpMode {
         final DcMotorSimple.Direction codeDirection;
         final double maxPower;
         DcMotorEx motor; // null if it's missing from the configuration
+        /** Motor whose encoder port this motor's encoder is plugged into (itself by default). */
+        TestMotor encoderFrom = this;
+        /** -1 to flip the encoder reading (e.g. MainArm.ENCODER_REVERSED). */
+        double encoderSign = 1;
 
         TestMotor(String name, String label, DcMotorSimple.Direction codeDirection, double maxPower) {
             this.name = name;
@@ -80,6 +87,9 @@ public class MotorDirectionDebug extends LinearOpMode {
         TestMotor intake     = add("intake",     "intake     (Dpad up)",  rev, 1.0);
         TestMotor flywheel   = add("flywheel",   "flywheel   (Dpad right)", Flywheel.REVERSED ? rev : fwd, 1.0);
         TestMotor mainArm    = add("mainArm",    "mainArm    (Dpad down)", MainArm.REVERSED ? rev : fwd, ARM_MAX_POWER);
+        // The arm's encoder is plugged into backLeft's encoder port; read it the way MainArm does
+        mainArm.encoderFrom = backLeft;
+        mainArm.encoderSign = MainArm.ENCODER_REVERSED ? -1 : 1;
 
         for (TestMotor t : motors) {
             try {
@@ -142,6 +152,19 @@ public class MotorDirectionDebug extends LinearOpMode {
             for (TestMotor t : motors) {
                 if (t.motor == null) {
                     telemetry.addData(t.label, "MISSING from config");
+                } else if (t.encoderFrom != t) {
+                    // Encoder lives on another motor's port: undo that motor's direction, apply our sign
+                    DcMotorEx enc = t.encoderFrom.motor;
+                    if (enc == null) {
+                        telemetry.addData(t.label, "dir=%s  pwr=%.2f  enc: %s MISSING",
+                                t.motor.getDirection(), t.motor.getPower(), t.encoderFrom.name);
+                    } else {
+                        double dirSign = enc.getDirection() == DcMotorSimple.Direction.REVERSE ? -1 : 1;
+                        telemetry.addData(t.label, "dir=%s  pwr=%.2f  enc=%.0f  vel=%.0f  (enc on %s port)",
+                                t.motor.getDirection(), t.motor.getPower(),
+                                t.encoderSign * dirSign * enc.getCurrentPosition(),
+                                t.encoderSign * dirSign * enc.getVelocity(), t.encoderFrom.name);
+                    }
                 } else {
                     telemetry.addData(t.label, "dir=%s  pwr=%.2f  enc=%d  vel=%.0f",
                             t.motor.getDirection(), t.motor.getPower(),

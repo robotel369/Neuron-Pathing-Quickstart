@@ -45,7 +45,7 @@ public class MainArmTuningOpMode extends LinearOpMode {
         try {
             arm = new MainArm(hardwareMap);
         } catch (IllegalArgumentException e) {
-            telemetry.addLine("No motor named \"mainArm\" in the active configuration.");
+            telemetry.addLine("Need motors \"mainArm\" and \"backLeft\" (arm encoder port) in the configuration.");
             telemetry.addLine("Add it on the Driver Station (Configure Robot), then re-init.");
             telemetry.update();
             waitForStart();

@@ -9,8 +9,13 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
 /**
- * Main arm pivot: one 117 RPM motor with its encoder plugged into its own port, held at
- * a position by our own PID loop.
+ * Main arm pivot: one 117 RPM motor, held at a position by our own PID loop.
+ *
+ * The arm motor's encoder cable is NOT in the arm motor's own port: it's plugged into the
+ * backLeft drive motor's encoder port on the Control Hub. So power goes to "mainArm" and
+ * position is read from "backLeft". This class never changes backLeft's mode or
+ * direction (the drive owns that motor); it zeroes in software and undoes backLeft's
+ * direction setting itself, so the drive's direction can't flip the arm reading.
  *
  * The arm moves slowly and smoothly: setTarget() sets the goal, and each loop the
  * PID setpoint walks toward that goal at no more than MAX_VELOCITY_TICKS_PER_SEC. The
@@ -20,8 +25,10 @@ import com.qualcomm.robotcore.util.Range;
  * Power each loop = kG * cos(angle) + kS * sign(error) + P + I + D on (setpoint - position),
  * capped at +/- MAX_POWER.
  *
- * The encoder resets to 0 when the subsystem is built, so the arm must be resting at
+ * The position zeroes when the subsystem is built, so the arm must be resting at
  * the same place (its bottom/stowed position) every time an OpMode inits.
+ * Build it AFTER NeuronDrive: the drive resets backLeft's encoder in its constructor,
+ * which would otherwise shift the arm's zero.
  * Gains are @Config for FTC Dashboard; copy tuned values back into this file.
  * Follows Neuron Pathing subsystem conventions.
  */
@@ -34,9 +41,14 @@ public class MainArm {
     }
 
     private final DcMotorEx motor;
+    /** The motor whose encoder port the arm's encoder is plugged into (backLeft). */
+    private final DcMotorEx encoder;
     public State state = State.HOLDING;
 
+    /** Motor direction: flip if positive power moves the arm DOWN. */
     public static boolean REVERSED = false;
+    /** Encoder sign: flip if the position counts DOWN while the arm goes UP. */
+    public static boolean ENCODER_REVERSED = false;
 
     // ---- geometry ----------------------------------------------------------------
     /** Encoder ticks per output-shaft revolution. goBILDA 5203 117 RPM (50.9:1) = 1425.1. */
@@ -83,19 +95,29 @@ public class MainArm {
     private double filteredDerivative = 0;
     private double integral = 0;
     private double lastPower = 0;
+    /** Raw encoder count that means position 0 (software zero). */
+    private double encoderZero = 0;
 
-    public MainArm(HardwareMap hwMap, String motorName) {
+    public MainArm(HardwareMap hwMap, String motorName, String encoderMotorName) {
         motor = hwMap.get(DcMotorEx.class, motorName);
+        encoder = hwMap.get(DcMotorEx.class, encoderMotorName);
         motor.setDirection(REVERSED ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
-        motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        // Our own loop sets power; the encoder still counts in this mode
+        // Our own loop sets power; no encoder on this port
         motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         motor.setPower(0);
+        encoderZero = rawEncoder();
     }
 
     public MainArm(HardwareMap hwMap) {
-        this(hwMap, "mainArm");
+        this(hwMap, "mainArm", "backLeft");
+    }
+
+    /** Encoder count with backLeft's direction setting undone, so only ENCODER_REVERSED matters. */
+    private double rawEncoder() {
+        double count = encoder.getCurrentPosition();
+        if (encoder.getDirection() == DcMotorSimple.Direction.REVERSE) count = -count;
+        return ENCODER_REVERSED ? -count : count;
     }
 
     /** Sets the goal position in encoder ticks (clipped to MIN_TICKS..MAX_TICKS). */
@@ -121,17 +143,18 @@ public class MainArm {
         lastPower = 0;
     }
 
-    /** Re-zeroes the encoder at the arm's current spot, e.g. after it slipped. */
+    /** Re-zeroes the position at the arm's current spot, e.g. after it slipped.
+     *  Done in software, so the backLeft drive motor isn't touched. */
     public void resetEncoder() {
-        motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        encoderZero = rawEncoder();
         goalTicks = 0;
         setpointTicks = 0;
         resetController();
     }
 
+    /** Arm position in ticks from the zero, read from the backLeft encoder port. */
     public double getPosition() {
-        return motor.getCurrentPosition();
+        return rawEncoder() - encoderZero;
     }
 
     public double getGoal() {

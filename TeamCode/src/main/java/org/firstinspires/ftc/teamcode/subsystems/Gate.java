@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 /**
  * Subsystem for controlling a gate servo.
  * Positions are @Config so they can be adjusted live in FTC Dashboard (or with the
- * "Servo Position Tuning" OpMode); copy the final values back into this file.
+ * "Gate Position Tuning" OpMode); copy the final values back into this file.
  * Follows Neuron Pathing subsystem conventions.
  */
 @Config
@@ -20,10 +20,9 @@ public class Gate {
     private final Servo servo;
     public State state = State.CLOSED;
 
-    // Starting values for Box of Hopes and Dreams: 0.2 apart, centred on the servo's
-    // range so there's room to adjust either way. Tune on the robot.
+    // Box of Hopes and Dreams values. Tune on the robot.
     public static double OPEN_POSITION = 0.6;
-    public static double CLOSED_POSITION = 0.4;
+    public static double CLOSED_POSITION = 0.8;
 
     public Gate(HardwareMap hwMap, String servoName) {
         servo = hwMap.get(Servo.class, servoName);

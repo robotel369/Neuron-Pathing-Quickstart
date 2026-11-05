@@ -3,17 +3,21 @@ package org.firstinspires.ftc.teamcode.subsystems;
 import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.util.Range;
 
 /**
- * Shooter pivot: two servos on opposite sides that turn in opposite directions.
- * Both get the same position; the right servo is set to Direction.REVERSE so the SDK
- * mirrors it (position p becomes 1 - p). RIGHT_TRIM nudges the right servo if the two
- * horns weren't mounted at exactly mirrored angles.
+ * Shooter pivot: two servos on opposite sides that move together but turn in opposite
+ * directions.
+ *
+ * Each servo has a ZERO position (its raw servo value when the pivot is at offset 0).
+ * A pose is an OFFSET from there, and the two servos get it with opposite signs:
+ *   left  = LEFT_ZERO  + offset
+ *   right = RIGHT_ZERO - offset
+ * e.g. with both zeros at 0.5, offset 0.2 puts the left servo at 0.7 and the right at 0.3.
+ * Servo positions only go from 0 to 1, so the zeros sit mid-range to leave room both ways.
+ * The offset is limited so neither servo goes past 0 or 1, which keeps them mirrored.
  *
  * Preset poses used through the match: BOTTOM, TRANSITION, SHOOT_FRONT, SHOOT_BACK.
- * Positions are @Config so they can be set live in FTC Dashboard or with the
- * "Servo Position Tuning" OpMode; copy the final values back into this file.
+ * Find the values with the "Shooter Pivot Tuning" OpMode and copy them into this file.
  * Follows Neuron Pathing subsystem conventions.
  */
 @Config
@@ -30,24 +34,24 @@ public class ShooterPivot {
     private final Servo right;
     public Pose pose = Pose.BOTTOM;
 
-    // Placeholder positions (left servo's value). NEED TUNING on the robot.
-    public static double BOTTOM_POSITION = 0.35;
-    public static double TRANSITION_POSITION = 0.45;
-    public static double SHOOT_FRONT_POSITION = 0.55;
-    public static double SHOOT_BACK_POSITION = 0.65;
+    /** Raw servo positions at offset 0. Adjust one of them if the two sides don't line up. */
+    public static double LEFT_ZERO = 0.5;
+    public static double RIGHT_ZERO = 0.5;
 
-    /** Added to the right servo's position (after mirroring) to line it up with the left. */
-    public static double RIGHT_TRIM = 0.0;
-    /** Flip this if the pivot moves the wrong way for increasing positions. */
-    public static boolean SWAP_DIRECTIONS = false;
+    // Preset offsets. Placeholders: NEED TUNING on the robot.
+    // Mirrored around 0.5 from the first guesses (each servo position p became 1 - p).
+    public static double BOTTOM_OFFSET = 0.15;
+    public static double TRANSITION_OFFSET = 0.05;
+    public static double SHOOT_FRONT_OFFSET = -0.05;
+    public static double SHOOT_BACK_OFFSET = -0.15;
 
-    private double position;
+    private double offset;
 
     public ShooterPivot(HardwareMap hwMap, String leftName, String rightName) {
         left = hwMap.get(Servo.class, leftName);
         right = hwMap.get(Servo.class, rightName);
-        left.setDirection(SWAP_DIRECTIONS ? Servo.Direction.REVERSE : Servo.Direction.FORWARD);
-        right.setDirection(SWAP_DIRECTIONS ? Servo.Direction.FORWARD : Servo.Direction.REVERSE);
+        left.setDirection(Servo.Direction.FORWARD);
+        right.setDirection(Servo.Direction.FORWARD);
         goTo(Pose.BOTTOM);
     }
 
@@ -55,14 +59,19 @@ public class ShooterPivot {
         this(hwMap, "pivotLeft", "pivotRight");
     }
 
-    public void goTo(Pose newPose) {
-        switch (newPose) {
-            case BOTTOM:      apply(BOTTOM_POSITION); break;
-            case TRANSITION:  apply(TRANSITION_POSITION); break;
-            case SHOOT_FRONT: apply(SHOOT_FRONT_POSITION); break;
-            case SHOOT_BACK:  apply(SHOOT_BACK_POSITION); break;
-            case MANUAL:      apply(position); break;
+    /** The offset stored for a preset (MANUAL returns the current offset). */
+    public double presetOffset(Pose p) {
+        switch (p) {
+            case BOTTOM:      return BOTTOM_OFFSET;
+            case TRANSITION:  return TRANSITION_OFFSET;
+            case SHOOT_FRONT: return SHOOT_FRONT_OFFSET;
+            case SHOOT_BACK:  return SHOOT_BACK_OFFSET;
+            default:          return offset;
         }
+    }
+
+    public void goTo(Pose newPose) {
+        apply(presetOffset(newPose));
         pose = newPose;
     }
 
@@ -71,26 +80,43 @@ public class ShooterPivot {
     public void shootFront() { goTo(Pose.SHOOT_FRONT); }
     public void shootBack()  { goTo(Pose.SHOOT_BACK); }
 
-    /** Sets a raw position (left servo's value) outside the presets, e.g. while tuning. */
-    public void setPosition(double newPosition) {
-        apply(newPosition);
+    /** Moves both servos to an offset outside the presets, e.g. while tuning. */
+    public void setOffset(double newOffset) {
+        apply(newOffset);
         pose = Pose.MANUAL;
     }
 
-    /** The position last sent to the left servo (the right one gets the mirror of it). */
-    public double getPosition() {
-        return position;
+    /** Current offset from the zeros (after limiting). */
+    public double getOffset() {
+        return offset;
     }
 
-    private void apply(double newPosition) {
-        position = Range.clip(newPosition, 0, 1);
-        left.setPosition(position);
-        right.setPosition(Range.clip(position + RIGHT_TRIM, 0, 1));
+    public double getLeftPosition() {
+        return LEFT_ZERO + offset;
+    }
+
+    public double getRightPosition() {
+        return RIGHT_ZERO - offset;
+    }
+
+    /** Smallest and largest offsets that keep both servos inside 0..1. */
+    public static double minOffset() {
+        return Math.max(-LEFT_ZERO, RIGHT_ZERO - 1);
+    }
+
+    public static double maxOffset() {
+        return Math.min(1 - LEFT_ZERO, RIGHT_ZERO);
+    }
+
+    private void apply(double newOffset) {
+        offset = Math.max(minOffset(), Math.min(maxOffset(), newOffset));
+        left.setPosition(getLeftPosition());
+        right.setPosition(getRightPosition());
     }
 
     /**
-     * Called continuously in TeleOp and Autonomous loops. Re-applies the current preset,
-     * so preset or trim changes made in FTC Dashboard take effect right away.
+     * Called continuously in TeleOp and Autonomous loops. Re-applies the current pose,
+     * so preset or zero changes made in FTC Dashboard take effect right away.
      */
     public void update() {
         goTo(pose);

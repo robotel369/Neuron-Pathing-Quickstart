@@ -141,7 +141,7 @@ public class NeuronTeleOp extends LinearOpMode {
             telemetry.addData("shooter", shooter.state);
             telemetry.addData("flywheel speed", flywheel.getTicksPerSec());
             telemetry.addData("arm", "%s  pos %.0f / goal %.0f", arm.state, arm.getPosition(), arm.getGoal());
-            telemetry.addData("pivot", "%s (%.2f)", pivot.pose, pivot.getPosition());
+            telemetry.addData("pivot", "%s (offset %.3f)", pivot.pose, pivot.getOffset());
             telemetry.update();
         }
     }
