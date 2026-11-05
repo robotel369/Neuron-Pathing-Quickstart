@@ -31,11 +31,12 @@ public class Flywheel {
     public static boolean REVERSED = true;
 
     // ---- tunable PIDF velocity gains (power units per tick/sec) ------------------
-    // Tuned on the robot, starting from the previous two-motor Shooter's gains
-    // (kP 0.02, kF 0.00085) for the same flywheel.
-    public static double kP = 0.03, kI = 0.0, kD = 0.0;
+    // NEEDS RETUNING: Box of Hopes and Dreams has a new flywheel. These are reset to a
+    // starting point. The rookie bot's tuned values were kP 0.03, kF 0.00085, which are
+    // only a rough guide here. Tune with "Flywheel Tuning": kF first (P/I/D at 0), then kP.
+    public static double kP = 0.0, kI = 0.0, kD = 0.0;
     /** F (feedforward): power per tick/sec of target. Tune first, with kP/kI/kD at 0. */
-    public static double kF = 0.00085;
+    public static double kF = 0.0;
     /** Static feedforward: constant power to overcome friction whenever the target isn't 0. */
     public static double kS = 0.0;
     /** Acceleration feedforward: power per (tick/sec per second) of target change. Adds power

@@ -11,7 +11,9 @@ import org.firstinspires.ftc.teamcode.subsystems.Flywheel;
 import org.firstinspires.ftc.teamcode.subsystems.Gate;
 import org.firstinspires.ftc.teamcode.subsystems.HeadingLight;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
+import org.firstinspires.ftc.teamcode.subsystems.MainArm;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
+import org.firstinspires.ftc.teamcode.subsystems.ShooterPivot;
 
 
 /**
@@ -22,6 +24,11 @@ import org.firstinspires.ftc.teamcode.subsystems.Shooter;
  *
  * Demonstrates the subsystem pattern using Gate (1 servo) and Intake (1 motor),
  * constructed alongside drive/localizer and updated every loop.
+ *
+ * Box of Hopes and Dreams additions, on gamepad2 (operator):
+ *   Left stick Y = move the main arm (goal moves at ARM_MANUAL_TICKS_PER_SEC at full stick)
+ *   Dpad down = pivot BOTTOM, dpad left = TRANSITION, dpad up = SHOOT_FRONT, dpad right = SHOOT_BACK
+ * The main arm must rest in its stowed position when the OpMode inits (encoder zeroes then).
  */
 @TeleOp(name = "Neuron TeleOp (Basic)")
 public class NeuronTeleOp extends LinearOpMode {
@@ -31,6 +38,8 @@ public class NeuronTeleOp extends LinearOpMode {
     /** Max drive and turning power while cross is held. */
     public static double BOOST_DRIVE_MAX_POWER = 1.0;
     public static double BOOST_TURN_MAX_POWER = 0.8;
+    /** Main arm goal speed at full gamepad2 left stick, in encoder ticks per second. */
+    public static double ARM_MANUAL_TICKS_PER_SEC = 400;
 
     /** Max drive power: NeuronDrive.teleOpMaxSpeed normally, BOOST_DRIVE_MAX_POWER while
      *  cross is held. WroomTeleOp overrides this; everything else it inherits from here. */
@@ -52,6 +61,9 @@ public class NeuronTeleOp extends LinearOpMode {
         Flywheel flywheel = new Flywheel(hardwareMap);
         Shooter shooter = new Shooter(flywheel, intake, gate);
         HeadingLight headingLight = new HeadingLight(hardwareMap);
+        MainArm arm = new MainArm(hardwareMap);
+        ShooterPivot pivot = new ShooterPivot(hardwareMap);
+        ElapsedTime loopTimer = new ElapsedTime();
         ElapsedTime headingLightHoldTimer = new ElapsedTime();
 
         // Calibrate the Pinpoint during init, before the first drive.update() reads the pose.
@@ -65,8 +77,12 @@ public class NeuronTeleOp extends LinearOpMode {
         telemetry.update();
 
         waitForStart();
+        loopTimer.reset();
 
         while (opModeIsActive()) {
+            double dt = loopTimer.seconds();
+            loopTimer.reset();
+
             // Drive and turn power caps come from driveMaxPower()/turnMaxPower() (cross held or not).
             // The turn stick is scaled by turn cap / drive cap, since drive() already
             // multiplies everything by the drive cap
@@ -114,6 +130,21 @@ public class NeuronTeleOp extends LinearOpMode {
                 headingLight.enable();
             }
             headingLight.update(drive.pose.h);
+
+            // Main arm: gamepad2 left stick moves the goal; the arm's PID follows it smoothly
+            double armStick = -gamepad2.left_stick_y;
+            if (Math.abs(armStick) > 0.05) {
+                arm.adjustTarget(armStick * ARM_MANUAL_TICKS_PER_SEC * dt);
+            }
+            arm.update();
+
+            // Shooter pivot presets on gamepad2's dpad
+            if (gamepad2.dpadDownWasPressed()) pivot.bottom();
+            if (gamepad2.dpadLeftWasPressed()) pivot.transition();
+            if (gamepad2.dpadUpWasPressed()) pivot.shootFront();
+            if (gamepad2.dpadRightWasPressed()) pivot.shootBack();
+            pivot.update();
+
             blackboard.put(PlannerAuto.POSE_KEY, drive.pose);
 
             telemetry.addData("x", drive.pose.x);
@@ -124,6 +155,8 @@ public class NeuronTeleOp extends LinearOpMode {
             telemetry.addData("shooter", shooter.state);
             telemetry.addData("flywheel speed", flywheel.getTicksPerSec());
             telemetry.addData("heading light", headingLight.state);
+            telemetry.addData("arm", "%s  pos %.0f / goal %.0f", arm.state, arm.getPosition(), arm.getGoal());
+            telemetry.addData("pivot", "%s (%.2f)", pivot.pose, pivot.getPosition());
             telemetry.addData("heading light angle (deg)", headingLight.getServoAngleDeg());
             telemetry.update();
         }
