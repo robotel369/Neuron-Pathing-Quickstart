@@ -8,7 +8,6 @@ import org.firstinspires.ftc.teamcode.neuronpathing.NeuronLocalizer;
 import org.firstinspires.ftc.teamcode.neuronpathing.Pose2D;
 import org.firstinspires.ftc.teamcode.subsystems.Flywheel;
 import org.firstinspires.ftc.teamcode.subsystems.Gate;
-import org.firstinspires.ftc.teamcode.subsystems.HeadingLight;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
 
@@ -28,7 +27,6 @@ public abstract class PlannerAuto extends LinearOpMode {
     Intake intake;
     Flywheel flywheel;
     Shooter shooter;
-    HeadingLight headingLight;
 
     /** Blackboard key for the robot's last known pose. Auto saves it every loop so
      *  TeleOp can start from wherever auto ended, even if auto was stopped mid-path.
@@ -62,7 +60,6 @@ public abstract class PlannerAuto extends LinearOpMode {
         intake = new Intake(hardwareMap);
         flywheel = new Flywheel(hardwareMap);
         shooter = new Shooter(flywheel, intake, gate);
-        headingLight = new HeadingLight(hardwareMap);
 
         gate.close();
         intake.stop();
@@ -177,7 +174,6 @@ public abstract class PlannerAuto extends LinearOpMode {
         gate.update();
         intake.update();
         flywheel.update();
-        headingLight.update(drive.pose.h);
         blackboard.put(POSE_KEY, drive.pose);
     }
 }

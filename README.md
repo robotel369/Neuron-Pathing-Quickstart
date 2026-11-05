@@ -21,7 +21,7 @@ for the full get-started page. The short version:
 4. Adding your own mechanisms (intake, arm, shooter...)? See
    **[Subsystems & Public Methods](https://brainstormz.us/neuron-pathing/docs/subsystems.html)** for how to write them and
    call them from both TeleOp and Autonomous alongside `NeuronDrive` --
-   `TeamCode/.../subsystems/ExampleClaw.java` is a working example, already
+   `TeamCode/.../subsystems/Gate.java` is a simple working example, already
    wired into `NeuronTeleOp.java` and `NeuronSplineAuto.java`.
 
 Stuck? See **[Troubleshooting](https://brainstormz.us/neuron-pathing/docs/troubleshooting.html)**.

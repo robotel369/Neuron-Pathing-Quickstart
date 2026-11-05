@@ -5,7 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 /**
  * NeuronTeleOp with different drive limits: always 100% drive power, and turning at 100%
  * except while cross is held, when it drops to SLOW_TURN_MAX_POWER.
- * Everything else (controls, shoot macro, heading light, pose from auto) is inherited from
+ * Everything else (controls, shoot macro, arm, shooter pivot, pose from auto) is inherited from
  * NeuronTeleOp, so changes there carry over here automatically.
  */
 @TeleOp(name = "wrooooom!!!")

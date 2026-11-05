@@ -9,7 +9,6 @@ import org.firstinspires.ftc.teamcode.neuronpathing.NeuronLocalizer;
 import org.firstinspires.ftc.teamcode.neuronpathing.Pose2D;
 import org.firstinspires.ftc.teamcode.subsystems.Flywheel;
 import org.firstinspires.ftc.teamcode.subsystems.Gate;
-import org.firstinspires.ftc.teamcode.subsystems.HeadingLight;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.MainArm;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
@@ -60,11 +59,9 @@ public class NeuronTeleOp extends LinearOpMode {
         Intake intake = new Intake(hardwareMap);
         Flywheel flywheel = new Flywheel(hardwareMap);
         Shooter shooter = new Shooter(flywheel, intake, gate);
-        HeadingLight headingLight = new HeadingLight(hardwareMap);
         MainArm arm = new MainArm(hardwareMap);
         ShooterPivot pivot = new ShooterPivot(hardwareMap);
         ElapsedTime loopTimer = new ElapsedTime();
-        ElapsedTime headingLightHoldTimer = new ElapsedTime();
 
         // Calibrate the Pinpoint during init, before the first drive.update() reads the pose.
         // calibrate(true) resets the position to 0, so the start pose is set afterwards:
@@ -119,17 +116,6 @@ public class NeuronTeleOp extends LinearOpMode {
             gate.update();
             intake.update();
             flywheel.update();
-            // Heading light: tap dpad right to turn the servo and LED fully off,
-            // hold it for 1.5 s to turn them back on
-            if (gamepad1.dpadRightWasPressed()) {
-                headingLight.disable();
-                headingLightHoldTimer.reset();
-            }
-            if (gamepad1.dpad_right && !headingLight.isEnabled()
-                    && headingLightHoldTimer.milliseconds() >= 1500) {
-                headingLight.enable();
-            }
-            headingLight.update(drive.pose.h);
 
             // Main arm: gamepad2 left stick moves the goal; the arm's PID follows it smoothly
             double armStick = -gamepad2.left_stick_y;
@@ -154,10 +140,8 @@ public class NeuronTeleOp extends LinearOpMode {
             telemetry.addData("intake", intake.state);
             telemetry.addData("shooter", shooter.state);
             telemetry.addData("flywheel speed", flywheel.getTicksPerSec());
-            telemetry.addData("heading light", headingLight.state);
             telemetry.addData("arm", "%s  pos %.0f / goal %.0f", arm.state, arm.getPosition(), arm.getGoal());
             telemetry.addData("pivot", "%s (%.2f)", pivot.pose, pivot.getPosition());
-            telemetry.addData("heading light angle (deg)", headingLight.getServoAngleDeg());
             telemetry.update();
         }
     }
