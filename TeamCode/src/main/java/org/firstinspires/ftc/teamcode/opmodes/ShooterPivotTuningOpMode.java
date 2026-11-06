@@ -9,8 +9,8 @@ import org.firstinspires.ftc.teamcode.subsystems.ShooterPivot;
 
 /**
  * Manually finds the shooter pivot positions. The two pivot servos always move together
- * and opposite: offset +0.2 moves the left servo up by 0.2 and the right servo down by 0.2
- * from their zero positions. Runs with gamepad1.
+ * by the same amount (the right one is inverted in hardware): offset +0.2 moves both up by
+ * 0.2 from their zero positions. Runs with gamepad1.
  *
  * Step 1, line the two sides up at offset 0 (Share goes there):
  *   Triangle / Cross = move ONLY the left servo's zero up / down
@@ -79,7 +79,7 @@ public class ShooterPivotTuningOpMode extends LinearOpMode {
             if (gamepad1.circleWasPressed()) ShooterPivot.RIGHT_ZERO = clip01(ShooterPivot.RIGHT_ZERO + step);
             if (gamepad1.squareWasPressed()) ShooterPivot.RIGHT_ZERO = clip01(ShooterPivot.RIGHT_ZERO - step);
 
-            // Move both servos together, in opposite directions
+            // Move both servos together by the same amount
             if (gamepad1.dpadUpWasPressed()) offset += step;
             if (gamepad1.dpadDownWasPressed()) offset -= step;
             if (gamepad1.shareWasPressed()) offset = 0;

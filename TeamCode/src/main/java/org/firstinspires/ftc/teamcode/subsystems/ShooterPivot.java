@@ -5,16 +5,18 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
 
 /**
- * Shooter pivot: two servos on opposite sides that move together but turn in opposite
- * directions.
+ * Shooter pivot: two servos on opposite sides that move together.
+ *
+ * The right servo is inverted in hardware (set up on the servo itself), so both servos get
+ * the SAME change in position and the pivot still turns as one: 0.6 -> 0.7 on both.
  *
  * Each servo has a ZERO position (its raw servo value when the pivot is at offset 0).
- * A pose is an OFFSET from there, and the two servos get it with opposite signs:
+ * A pose is an OFFSET from there, added to both:
  *   left  = LEFT_ZERO  + offset
- *   right = RIGHT_ZERO - offset
- * e.g. with both zeros at 0.5, offset 0.2 puts the left servo at 0.7 and the right at 0.3.
+ *   right = RIGHT_ZERO + offset
+ * e.g. with both zeros at 0.5, offset 0.2 puts both servos at 0.7.
  * Servo positions only go from 0 to 1, so the zeros sit mid-range to leave room both ways.
- * The offset is limited so neither servo goes past 0 or 1, which keeps them mirrored.
+ * The offset is limited so neither servo goes past 0 or 1, which keeps them together.
  *
  * Preset poses used through the match: BOTTOM, TRANSITION, SHOOT_FRONT, SHOOT_BACK.
  * Find the values with the "Shooter Pivot Tuning" OpMode and copy them into this file.
@@ -39,7 +41,6 @@ public class ShooterPivot {
     public static double RIGHT_ZERO = 0.5;
 
     // Preset offsets. Placeholders: NEED TUNING on the robot.
-    // Mirrored around 0.5 from the first guesses (each servo position p became 1 - p).
     public static double BOTTOM_OFFSET = 0.15;
     public static double TRANSITION_OFFSET = 0.05;
     public static double SHOOT_FRONT_OFFSET = -0.05;
@@ -96,16 +97,16 @@ public class ShooterPivot {
     }
 
     public double getRightPosition() {
-        return RIGHT_ZERO - offset;
+        return RIGHT_ZERO + offset;
     }
 
     /** Smallest and largest offsets that keep both servos inside 0..1. */
     public static double minOffset() {
-        return Math.max(-LEFT_ZERO, RIGHT_ZERO - 1);
+        return Math.max(-LEFT_ZERO, -RIGHT_ZERO);
     }
 
     public static double maxOffset() {
-        return Math.min(1 - LEFT_ZERO, RIGHT_ZERO);
+        return Math.min(1 - LEFT_ZERO, 1 - RIGHT_ZERO);
     }
 
     private void apply(double newOffset) {
