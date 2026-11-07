@@ -37,8 +37,8 @@ public class ShooterPivot {
 
     // Positions sent to BOTH servos. TRANSITION and SHOOT_FRONT are placeholders: NEED TUNING.
     public static double BOTTOM_POSITION = 1.0;
-    public static double TRANSITION_POSITION = 0.67;
-    public static double SHOOT_FRONT_POSITION = 0.33;
+    public static double TRANSITION_POSITION = 0.83;
+    public static double SHOOT_FRONT_POSITION = 0.3;
     public static double SHOOT_BACK_POSITION = 0.0;
 
     private double position;

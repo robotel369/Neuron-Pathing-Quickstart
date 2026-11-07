@@ -7,6 +7,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.subsystems.MainArm;
+import org.firstinspires.ftc.teamcode.subsystems.ShooterPivot;
 
 /**
  * Main arm PID tuning OpMode. Runs from the Driver Station with gamepad1; FTC Dashboard
@@ -34,30 +35,81 @@ public class MainArmTuningOpMode extends LinearOpMode {
     public static double POSITION_B_TICKS = 300;
     public static double MANUAL_TICKS_PER_SEC = 300;
 
+    /** Shown on the Driver Station so you can tell which build is installed. */
+    private static final String BUILD_TAG = "arm-tuning v3 (2026-11-06)";
+
+    private String stage = "starting";
+
     @Override
     public void runOpMode() {
+        try {
+            runTuning();
+        } catch (RuntimeException e) {
+            if (isStopRequested()) throw e; // normal STOP, let the SDK handle it
+            // Keep any error on screen until STOP instead of silently dropping back to init
+            StackTraceElement[] trace = e.getStackTrace();
+            while (!isStopRequested()) {
+                telemetry.addData("Build", BUILD_TAG);
+                telemetry.addLine("ERROR - the OpMode hit a problem:");
+                telemetry.addData("During", stage);
+                telemetry.addData("Error", e.toString());
+                for (int i = 0; i < Math.min(4, trace.length); i++) {
+                    telemetry.addLine("  at " + trace[i]);
+                }
+                telemetry.update();
+                sleep(100);
+            }
+        }
+    }
+
+    private void runTuning() {
+        stage = "setting up telemetry";
         FtcDashboard dashboard = FtcDashboard.getInstance();
         if (dashboard != null) {
             telemetry = new MultipleTelemetry(telemetry, dashboard.getTelemetry());
         }
 
+        stage = "finding mainArm / backLeft";
         MainArm arm;
         try {
             arm = new MainArm(hardwareMap);
         } catch (IllegalArgumentException e) {
-            telemetry.addLine("Need motors \"mainArm\" and \"backLeft\" (arm encoder port) in the configuration.");
-            telemetry.addLine("Add it on the Driver Station (Configure Robot), then re-init.");
-            telemetry.update();
-            waitForStart();
+            // Keep the error on screen until STOP, so it can't flash past
+            while (!isStopRequested()) {
+                telemetry.addData("Build", BUILD_TAG);
+                telemetry.addLine("CAN'T RUN: hardware missing from the active configuration.");
+                telemetry.addLine("Needs a motor \"mainArm\" (arm power) and a motor \"backLeft\"");
+                telemetry.addLine("(the arm's encoder is plugged into backLeft's port).");
+                telemetry.addLine("Names are case-sensitive and must be set as motors.");
+                telemetry.addData("SDK says", e.getMessage());
+                telemetry.update();
+                sleep(100);
+            }
             return;
         }
 
-        telemetry.addLine("Arm must rest in its stowed spot (encoder zeroes now).");
+        // Hold the shooter pivot at SHOOT_FRONT the whole time (moves at init).
+        // Optional: if the pivot servos aren't in the config, arm tuning still runs.
+        stage = "setting shooter pivot to SHOOT_FRONT";
+        ShooterPivot pivot = null;
+        try {
+            pivot = new ShooterPivot(hardwareMap, /*moveToBottom=*/false);
+            pivot.shootFront();
+        } catch (IllegalArgumentException e) {
+            pivot = null;
+        }
+
+        stage = "waiting for START";
+        telemetry.addData("Build", BUILD_TAG);
+        telemetry.addData("Shooter pivot", pivot == null
+                ? "not in config (not held)" : "holding SHOOT_FRONT");
+        telemetry.addLine("Hardware found. Arm must rest in its stowed spot (encoder zeroes now).");
         telemetry.addLine("Triangle = A/B, left stick = nudge, cross = power off, square = re-zero");
         telemetry.update();
 
         waitForStart();
 
+        stage = "main loop";
         boolean atB = false;
         long lastNanos = System.nanoTime();
 
@@ -81,7 +133,11 @@ public class MainArmTuningOpMode extends LinearOpMode {
                 arm.resetEncoder();
             }
             arm.update();
+            if (pivot != null) pivot.update();
 
+            telemetry.addData("Build", BUILD_TAG);
+            telemetry.addData("pivot", pivot == null ? "not in config"
+                    : String.format("%s (%.3f)", pivot.pose, pivot.getPosition()));
             telemetry.addData("state", arm.state);
             telemetry.addData("goal", arm.getGoal());
             telemetry.addData("setpoint", arm.getSetpoint());
