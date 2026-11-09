@@ -25,8 +25,9 @@ public class Intake {
     public Intake(HardwareMap hwMap, String motorName) {
         motor = hwMap.get(DcMotorEx.class, motorName);
         motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        // Reversed so positive power pulls game pieces in on this robot
-        motor.setDirection(DcMotorSimple.Direction.REVERSE);
+        // Box of Hopes and Dreams: FORWARD makes positive power pull game pieces in
+        // (the rookie bot needed REVERSE)
+        motor.setDirection(DcMotorSimple.Direction.FORWARD);
         stop();
     }
 

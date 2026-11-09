@@ -28,6 +28,8 @@ public class Flywheel {
     private final DcMotorEx motor;
     public State state = State.STOPPED;
 
+    /** Flip this if the flywheel spins the wrong way. On Box of Hopes and Dreams, true
+     *  makes positive power spin the shooting way. */
     public static boolean REVERSED = true;
 
     // ---- tunable PIDF velocity gains (power units per tick/sec) ------------------
@@ -76,6 +78,9 @@ public class Flywheel {
     private double integral = 0;
     private double lastPower = 0;
     private boolean coasting = false;
+    /** Open-loop mode: a fixed power, no speed control (for when there's no encoder). */
+    private boolean openLoop = false;
+    private double openLoopPower = 0;
 
     public Flywheel(HardwareMap hwMap, String motorName) {
         motor = hwMap.get(DcMotorEx.class, motorName);
@@ -95,6 +100,24 @@ public class Flywheel {
         targetTicksPerSec = Math.max(0, ticksPerSec);
         state = targetTicksPerSec > 0 ? State.SPINNING : State.STOPPED;
         coasting = false;
+        openLoop = false;
+    }
+
+    /**
+     * Runs the flywheel at a fixed power with no speed control, for when the flywheel has
+     * no encoder. Positive = shooting direction, negative = spinning inward (e.g. while
+     * intaking). Calling setTargetTicksPerSec() or stop() leaves this mode.
+     */
+    public void setOpenLoopPower(double power) {
+        targetTicksPerSec = 0;
+        coasting = false;
+        openLoop = true;
+        openLoopPower = Range.clip(power, -1, 1);
+        state = openLoopPower != 0 ? State.SPINNING : State.STOPPED;
+    }
+
+    public boolean isOpenLoop() {
+        return openLoop;
     }
 
     /**
@@ -154,6 +177,14 @@ public class Flywheel {
         motor.setZeroPowerBehavior(BRAKE_WHEN_STOPPED
                 ? DcMotor.ZeroPowerBehavior.BRAKE
                 : DcMotor.ZeroPowerBehavior.FLOAT);
+
+        if (openLoop) {
+            integral = 0;
+            filteredDerivative = 0;
+            lastPower = openLoopPower;
+            motor.setPower(openLoopPower);
+            return;
+        }
 
         double error = getError();
         double targetRate = (dt > 0) ? (targetTicksPerSec - lastTargetTicksPerSec) / dt : 0;

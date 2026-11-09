@@ -84,7 +84,7 @@ public class MotorDirectionDebug extends LinearOpMode {
         TestMotor frontRight = add("frontRight", "frontRight (Circle)",   rev, 1.0);
         TestMotor backLeft   = add("backLeft",   "backLeft   (Square)",   fwd, 1.0);
         TestMotor backRight  = add("backRight",  "backRight  (Triangle)", rev, 1.0);
-        TestMotor intake     = add("intake",     "intake     (Dpad up)",  rev, 1.0);
+        TestMotor intake     = add("intake",     "intake     (Dpad up)",  fwd, 1.0);
         TestMotor flywheel   = add("flywheel",   "flywheel   (Dpad right)", Flywheel.REVERSED ? rev : fwd, 1.0);
         TestMotor mainArm    = add("mainArm",    "mainArm    (Dpad down)", MainArm.REVERSED ? rev : fwd, ARM_MAX_POWER);
         // The arm's encoder is plugged into backLeft's encoder port; read it the way MainArm does

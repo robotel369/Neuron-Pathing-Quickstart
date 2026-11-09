@@ -93,11 +93,11 @@ public class ShooterPivotTuningOpMode extends LinearOpMode {
             if (!pivot.isReleased()) {
                 if (gamepad1.dpadUpWasPressed()) {
                     pivot.setPosition(position + step);
-                    position = pivot.getPosition();
+                    position = pivot.getTarget();
                 }
                 if (gamepad1.dpadDownWasPressed()) {
                     pivot.setPosition(position - step);
-                    position = pivot.getPosition();
+                    position = pivot.getTarget();
                 }
             }
 
@@ -105,6 +105,8 @@ public class ShooterPivotTuningOpMode extends LinearOpMode {
             if (gamepad1.circleWasPressed()) {
                 pivot.release();
             }
+            // Walks the servos toward the target at ShooterPivot.MAX_SPEED_PER_SEC
+            pivot.update();
 
             if (gamepad1.optionsWasPressed() && !pivot.isReleased() && presetIndex >= 0) {
                 ShooterPivot.savePreset(presets[presetIndex], position);
@@ -118,7 +120,8 @@ public class ShooterPivotTuningOpMode extends LinearOpMode {
                 }
             } else {
                 boolean onSaved = Math.abs(position - pivot.presetPosition(presets[presetIndex])) < 1e-9;
-                telemetry.addData("State", "HOLDING");
+                telemetry.addData("State", pivot.isMoving()
+                        ? String.format("MOVING (now %.3f)", pivot.getPosition()) : "HOLDING");
                 telemetry.addData("Pose", "%s%s", presets[presetIndex], onSaved ? "" : "  (adjusted, not saved)");
                 telemetry.addData("Position (both servos)", "%.3f", position);
             }

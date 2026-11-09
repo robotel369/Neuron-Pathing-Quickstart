@@ -68,7 +68,8 @@ public class MainArm {
     // ---- tunable PID (power per tick of error) -----------------------------------
     // NEEDS TUNING. Order: kG first (arm floats where you leave it), then kP, then kD,
     // and kI only if it sits short of the target. Use the "Main Arm Tuning" OpMode.
-    public static double kP = 0.0, kI = 0.0, kD = 0.0;
+    // kP 0.07 tested on the robot and works well.
+    public static double kP = 0.07, kI = 0.0, kD = 0.0;
     /** Gravity feedforward: power needed to hold the arm level (horizontal). */
     public static double kG = 0.0;
     /** Static friction feedforward: small push in the direction of the error, only when

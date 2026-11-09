@@ -18,6 +18,11 @@ import com.qualcomm.robotcore.util.ElapsedTime;
  * to the power it had before the shot, and the flywheel target drops by
  * SPEED_DROP_AFTER_SHOT. The flywheel coasts down to that lower speed with 0 power
  * (no braking) to save battery, then holds it.
+ *
+ * NO-ENCODER MODE (USE_FLYWHEEL_ENCODER = false, the default for now): the flywheel has
+ * no encoder, so SPIN_UP just runs it at OPEN_LOOP_POWER and waits OPEN_LOOP_SPIN_UP_MS
+ * before opening the gate. After the shot the flywheel goes to OPEN_LOOP_AFTER_SHOT_POWER.
+ * Set USE_FLYWHEEL_ENCODER = true once the encoder is plugged in and the flywheel is tuned.
  * Follows Neuron Pathing subsystem conventions.
  */
 @Config
@@ -35,7 +40,16 @@ public class Shooter {
     private final Gate gate;
     public State state = State.IDLE;
 
-    /** Default flywheel speed for a shot, in ticks/sec. */
+    /** false = no flywheel encoder: fixed power and a timed spin-up instead of speed control. */
+    public static boolean USE_FLYWHEEL_ENCODER = false;
+    /** No-encoder mode: flywheel power while spinning up and shooting (0 to 1). */
+    public static double OPEN_LOOP_POWER = 0.7;
+    /** No-encoder mode: how long to spin up before opening the gate. */
+    public static double OPEN_LOOP_SPIN_UP_MS = 2000;
+    /** No-encoder mode: flywheel power after the shot. 0 = stop. */
+    public static double OPEN_LOOP_AFTER_SHOT_POWER = 0.0;
+
+    /** Default flywheel speed for a shot, in ticks/sec (encoder mode only). */
     public static double SHOOT_TICKS_PER_SEC = 1085;
     /** Flywheel counts as ready when within this many ticks/sec of the target. */
     public static double AT_SPEED_TOLERANCE_TICKS_PER_SEC = 25;
@@ -76,7 +90,11 @@ public class Shooter {
         shotTargetTicksPerSec = targetTicksPerSec;
         intakePowerBeforeShot = intake.getPower();
         cyclesDone = 0;
-        flywheel.setTargetTicksPerSec(targetTicksPerSec);
+        if (USE_FLYWHEEL_ENCODER) {
+            flywheel.setTargetTicksPerSec(targetTicksPerSec);
+        } else {
+            flywheel.setOpenLoopPower(OPEN_LOOP_POWER);
+        }
         gate.close();
         setState(State.SPIN_UP);
     }
@@ -98,8 +116,11 @@ public class Shooter {
     public void update() {
         switch (state) {
             case SPIN_UP:
-                if (flywheel.atSpeed(AT_SPEED_TOLERANCE_TICKS_PER_SEC)
-                        || stateTimer.milliseconds() >= SPIN_UP_TIMEOUT_MS) {
+                boolean ready = USE_FLYWHEEL_ENCODER
+                        ? flywheel.atSpeed(AT_SPEED_TOLERANCE_TICKS_PER_SEC)
+                                || stateTimer.milliseconds() >= SPIN_UP_TIMEOUT_MS
+                        : stateTimer.milliseconds() >= OPEN_LOOP_SPIN_UP_MS;
+                if (ready) {
                     gate.open();
                     intake.setPower(OUTTAKE_PULSE_POWER);
                     setState(State.OUTTAKE_PULSE);
@@ -136,7 +157,11 @@ public class Shooter {
     private void finish() {
         gate.close();
         intake.setPower(intakePowerBeforeShot);
-        flywheel.coastDownTo(shotTargetTicksPerSec - SPEED_DROP_AFTER_SHOT);
+        if (USE_FLYWHEEL_ENCODER) {
+            flywheel.coastDownTo(shotTargetTicksPerSec - SPEED_DROP_AFTER_SHOT);
+        } else {
+            flywheel.setOpenLoopPower(OPEN_LOOP_AFTER_SHOT_POWER);
+        }
         setState(State.IDLE);
     }
 
