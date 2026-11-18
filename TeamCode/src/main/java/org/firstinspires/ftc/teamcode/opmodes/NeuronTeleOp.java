@@ -66,6 +66,9 @@ public class NeuronTeleOp extends LinearOpMode {
 
         waitForStart();
 
+        // Spin the flywheel up at the start and keep it at shot speed for the whole match
+        flywheel.setTargetTicksPerSec(Shooter.SHOOT_TICKS_PER_SEC);
+
         while (opModeIsActive()) {
             // Drive and turn power caps come from driveMaxPower()/turnMaxPower() (cross held or not).
             // The turn stick is scaled by turn cap / drive cap, since drive() already

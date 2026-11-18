@@ -36,10 +36,10 @@ public class NeuronLocalizer {
         pinpoint.setEncoderDirections(xEncoderDirection, yEncoderDirection);
     }
 
-    /** Convenience constructor using the goBILDA 4-bar pod and the "pinpoint" device name. */
+    /** Convenience constructor using the goBILDA swingarm pod and the "pinpoint" device name. */
     public NeuronLocalizer(HardwareMap hwMap, Telemetry telemetry, double xOffsetMm, double yOffsetMm) {
         this(hwMap, telemetry, "pinpoint", xOffsetMm, yOffsetMm,
-                GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD,
+                GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_SWINGARM_POD,
                 GoBildaPinpointDriver.EncoderDirection.FORWARD,
                 GoBildaPinpointDriver.EncoderDirection.REVERSED);
     }

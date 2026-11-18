@@ -15,9 +15,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
  * INTAKE_PULSE  -> intake runs in at INTAKE_PULSE_POWER for INTAKE_PULSE_MS
  * PAUSE         -> intake stops for PAUSE_AFTER_INTAKE_MS
  * The three steps repeat FEED_CYCLES times. Then the gate closes, the intake goes back
- * to the power it had before the shot, and the flywheel target drops by
- * SPEED_DROP_AFTER_SHOT. The flywheel coasts down to that lower speed with 0 power
- * (no braking) to save battery, then holds it.
+ * to the power it had before the shot, and the flywheel keeps holding the shot speed
+ * (no spin-down between shots), so it stays ready for the whole match.
  * Follows Neuron Pathing subsystem conventions.
  */
 @Config
@@ -51,8 +50,6 @@ public class Shooter {
     public static double PAUSE_AFTER_INTAKE_MS = 400;
     /** How many out-in-pause cycles to run once the gate is open. */
     public static int FEED_CYCLES = 3;
-    /** After the shot the flywheel target drops by this much (and coasts down to it). */
-    public static double SPEED_DROP_AFTER_SHOT = 150;
 
     private final ElapsedTime stateTimer = new ElapsedTime();
     private double shotTargetTicksPerSec = 0;
@@ -136,7 +133,8 @@ public class Shooter {
     private void finish() {
         gate.close();
         intake.setPower(intakePowerBeforeShot);
-        flywheel.coastDownTo(shotTargetTicksPerSec - SPEED_DROP_AFTER_SHOT);
+        // Keep the flywheel at shot speed between shots instead of spinning down
+        flywheel.setTargetTicksPerSec(shotTargetTicksPerSec);
         setState(State.IDLE);
     }
 

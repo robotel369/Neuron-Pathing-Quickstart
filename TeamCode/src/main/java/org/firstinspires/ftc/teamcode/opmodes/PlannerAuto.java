@@ -79,6 +79,9 @@ public abstract class PlannerAuto extends LinearOpMode {
         waitForStart();
         if (isStopRequested()) return;
 
+        // Spin the flywheel up right away and keep it at shot speed for all of auto
+        flywheel.setTargetTicksPerSec(Shooter.SHOOT_TICKS_PER_SEC);
+
         runPath();
 
         intake.stop();
