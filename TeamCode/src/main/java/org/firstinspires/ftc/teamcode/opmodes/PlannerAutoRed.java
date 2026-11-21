@@ -2,7 +2,7 @@ package org.firstinspires.ftc.teamcode.opmodes;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
-@Autonomous(name = "Planner Auto (Red)", preselectTeleOp = "Neuron TeleOp (Basic)")
+@Autonomous(name = "Planner Auto (Red)", preselectTeleOp = "Neuron TeleOp (Red)")
 public class PlannerAutoRed extends PlannerAuto {
     @Override
     protected double alliance() {
