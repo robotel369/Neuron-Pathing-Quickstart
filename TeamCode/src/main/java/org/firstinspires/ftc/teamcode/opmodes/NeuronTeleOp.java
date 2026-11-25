@@ -35,6 +35,10 @@ public abstract class NeuronTeleOp extends LinearOpMode {
     /** Max turning power (fraction of full motor power). Normal drive power is capped
      *  by NeuronDrive.teleOpMaxSpeed. */
     public static double TURN_MAX_POWER = 0.6;
+    /** While cross is held, the shoot macro starts automatically once auto aim has been at
+     *  its target (heading, distance and zone) for this long. Once per cross hold:
+     *  release cross and hold it again to auto shoot again. */
+    public static double AUTO_SHOOT_DELAY_MS = 300;
 
     /** Max drive power: NeuronDrive.teleOpMaxSpeed. WroomTeleOp overrides this;
      *  everything else it inherits from here. */
@@ -96,6 +100,9 @@ public abstract class NeuronTeleOp extends LinearOpMode {
         flywheel.setTargetTicksPerSec(Shooter.SHOOT_TICKS_PER_SEC);
 
         boolean wasAiming = false;
+        ElapsedTime aimedTimer = new ElapsedTime();
+        boolean wasAimed = false;
+        boolean autoShotFired = false;
         while (opModeIsActive()) {
             // Drive and turn power caps come from driveMaxPower()/turnMaxPower().
             // The turn stick is scaled by turn cap / drive cap, since drive() already
@@ -133,6 +140,17 @@ public abstract class NeuronTeleOp extends LinearOpMode {
                 } else {
                     shooter.start();
                 }
+            }
+            // Auto shoot: once auto aim has held its target pose for AUTO_SHOOT_DELAY_MS,
+            // start the shoot macro (once per cross hold)
+            boolean aimed = cross && aim.isAimed();
+            if (aimed && !wasAimed) aimedTimer.reset();
+            wasAimed = aimed;
+            if (!cross) autoShotFired = false;
+            if (aimed && !autoShotFired && !shooter.isBusy()
+                    && aimedTimer.milliseconds() >= AUTO_SHOOT_DELAY_MS) {
+                shooter.start();
+                autoShotFired = true;
             }
             shooter.update();
 

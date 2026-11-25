@@ -11,12 +11,14 @@ import org.firstinspires.ftc.teamcode.neuronpathing.Pose2D;
  * Auto aim: turns the robot so the shooter points at the alliance goal, using the
  * Pinpoint pose, and drives it to a shooting spot that is AIM_DISTANCE_IN from the goal
  * (within +-AIM_DISTANCE_TOLERANCE_IN) AND inside the shooting zone in y
- * (Blue: -38 to -10, Red mirrored: +10 to +38). The spot is the point on that part of the
- * 42 in circle closest to the robot. The OpMode adds the returned turn and forward/strafe
+ * (Blue: +10 to +38, on its own goal's side; Red mirrored: -38 to -10). The spot keeps the closest y to the robot
+ * (its own y if already in the zone, else the nearest zone y) and picks x on the 44 in arc. The OpMode adds the returned turn and forward/strafe
  * powers to the driver's sticks.
  *
  * Goal targets (inches, field coordinates):
- *   Blue: (-12, 14.5)   Red: (-12, -10.5)
+ *   Blue: (-12, 14.5)   Red: (-12, -14.5), always the mirror of Blue
+ * On the positive-x hive the goal y and zone flip sign (FLIP_Y_ON_POSITIVE_HIVE):
+ *   Blue: (12, -14.5)   Red: (12, 14.5)
  * BIOBUZZ has two hive positions, so once the robot crosses into positive x the goal's
  * x switches to +12 (and back to -12 when it returns). A small hysteresis band around
  * HIVE_SWITCH_X stops the target from flickering when the robot sits right on the line.
@@ -41,8 +43,13 @@ public class AutoAim {
     public static double GOAL_X_NEGATIVE_SIDE = -12;
     /** Goal x once the robot crosses into positive x (second hive). */
     public static double GOAL_X_POSITIVE_SIDE = 12;
+    /** Blue goal y on the negative-x hive; Red always uses the mirror image (-BLUE_GOAL_Y),
+     *  so tuning this sets both. */
     public static double BLUE_GOAL_Y = 14.5;
-    public static double RED_GOAL_Y = -10.5;
+    /** true = the positive-x hive is rotated 180 deg from the negative-x one, so each
+     *  alliance's goal y (and shooting zone) flips sign once the robot crosses into positive x.
+     *  Without this, Blue aimed at Red's goal on the positive-x side. */
+    public static boolean FLIP_Y_ON_POSITIVE_HIVE = true;
     /** The robot's x at which the goal switches hives. */
     public static double HIVE_SWITCH_X = 0;
     /** The robot has to be this many inches past HIVE_SWITCH_X before the goal switches. */
@@ -64,13 +71,14 @@ public class AutoAim {
     /** false = only turn, never drive to the shooting spot. */
     public static boolean DRIVE_TO_DISTANCE = true;
     /** Shooting distance from the robot's center to the goal target, in inches. */
-    public static double AIM_DISTANCE_IN = 42;
+    public static double AIM_DISTANCE_IN = 44;
     /** Counts as at distance within AIM_DISTANCE_IN +- this (3 in total window). */
     public static double AIM_DISTANCE_TOLERANCE_IN = 1.5;
     /** false = ignore the y zone and only hold the distance. */
     public static boolean USE_Y_ZONE = true;
-    /** Shooting zone in y for Blue; Red uses the mirror image (+10 to +38). */
-    public static double BLUE_ZONE_Y_MIN = -38, BLUE_ZONE_Y_MAX = -10;
+    /** Shooting zone in y for Blue (same side as the Blue goal and the Blue auto path);
+     *  Red uses the mirror image (-38 to -10). */
+    public static double BLUE_ZONE_Y_MIN = 10, BLUE_ZONE_Y_MAX = 38;
     /** When the spot is clamped to a zone edge, aim this far inside the edge so the robot
      *  ends up clearly in the zone instead of creeping toward the line. */
     public static double ZONE_EDGE_MARGIN_IN = 1;
@@ -118,7 +126,7 @@ public class AutoAim {
         }
 
         goalX = positiveSideHive ? GOAL_X_POSITIVE_SIDE : GOAL_X_NEGATIVE_SIDE;
-        goalY = alliance > 0 ? RED_GOAL_Y : BLUE_GOAL_Y;
+        goalY = ySign() * BLUE_GOAL_Y;
 
         distanceIn = Math.hypot(goalX - pose.x, goalY - pose.y);
         lastY = pose.y;
@@ -179,43 +187,57 @@ public class AutoAim {
         strafeLeftPower = -fieldX * sinH + fieldY * cosH;
     }
 
-    // Shooting spot: the point AIM_DISTANCE_IN from the goal, straight out toward the robot.
-    // If that point is outside the y zone, use the point on the circle at the nearest zone
-    // edge instead (on the robot's side in x). If the circle doesn't reach the zone at all,
-    // fall back to the zone edge straight in line with the goal.
+    // Shooting spot with the closest y: keep the robot's own y if it's already inside the
+    // zone, otherwise use the nearest zone y (ZONE_EDGE_MARGIN_IN inside the edge). That y
+    // is also kept within reach of the AIM_DISTANCE_IN circle. Then x is picked on the
+    // circle, on the robot's side of the goal, so the robot mostly drives sideways in x
+    // instead of sliding along the circle to some other y.
     private void findSpot(Pose2D pose) {
         double r = AIM_DISTANCE_IN;
-        double ux = pose.x - goalX, uy = pose.y - goalY;
-        double len = Math.hypot(ux, uy);
-        if (len < 0.5) { ux = 1; uy = 0; len = 1; }
-        spotX = goalX + ux / len * r;
-        spotY = goalY + uy / len * r;
+        double targetY = pose.y;
 
-        if (!USE_Y_ZONE) return;
-        // Zone shrunk by the margin, so the spot always sits clearly inside the real zone
-        double zoneMin = zoneYMin() + ZONE_EDGE_MARGIN_IN, zoneMax = zoneYMax() - ZONE_EDGE_MARGIN_IN;
-        if (spotY >= zoneMin && spotY <= zoneMax) return;
-
-        double edgeY = spotY < zoneMin ? zoneMin : zoneMax;
-        double dyEdge = edgeY - goalY;
-        if (Math.abs(dyEdge) <= r) {
-            double dxEdge = Math.sqrt(r * r - dyEdge * dyEdge);
-            double xA = goalX + dxEdge, xB = goalX - dxEdge;
-            spotX = Math.abs(xA - pose.x) <= Math.abs(xB - pose.x) ? xA : xB;
-        } else {
-            spotX = goalX;
+        if (USE_Y_ZONE) {
+            double zoneMin = zoneYMin(), zoneMax = zoneYMax();
+            if (targetY < zoneMin) targetY = zoneMin + ZONE_EDGE_MARGIN_IN;
+            if (targetY > zoneMax) targetY = zoneMax - ZONE_EDGE_MARGIN_IN;
         }
-        spotY = edgeY;
+
+        // The circle only reaches goalY +- r; stay just inside that so x is well defined
+        double reach = r - 0.5;
+        if (targetY < goalY - reach) targetY = goalY - reach;
+        if (targetY > goalY + reach) targetY = goalY + reach;
+
+        double dy = targetY - goalY;
+        double dx = Math.sqrt(r * r - dy * dy);
+        double xA = goalX + dx, xB = goalX - dx;
+        // Prefer the spot on the current hive's side of HIVE_SWITCH_X, so the goal doesn't
+        // flip hives on the way there; otherwise take the one nearest the robot
+        boolean aOk = positiveSideHive ? xA >= HIVE_SWITCH_X : xA <= HIVE_SWITCH_X;
+        boolean bOk = positiveSideHive ? xB >= HIVE_SWITCH_X : xB <= HIVE_SWITCH_X;
+        if (aOk != bOk) {
+            spotX = aOk ? xA : xB;
+        } else {
+            spotX = Math.abs(xA - pose.x) <= Math.abs(xB - pose.x) ? xA : xB;
+        }
+        spotY = targetY;
     }
 
     /** Low edge of the y zone for this alliance (Red mirrors Blue across y = 0). */
     public double zoneYMin() {
-        return alliance > 0 ? -BLUE_ZONE_Y_MAX : BLUE_ZONE_Y_MIN;
+        return ySign() > 0 ? BLUE_ZONE_Y_MIN : -BLUE_ZONE_Y_MAX;
     }
 
     /** High edge of the y zone for this alliance. */
     public double zoneYMax() {
-        return alliance > 0 ? -BLUE_ZONE_Y_MIN : BLUE_ZONE_Y_MAX;
+        return ySign() > 0 ? BLUE_ZONE_Y_MAX : -BLUE_ZONE_Y_MIN;
+    }
+
+    // +1 = use the Blue numbers as written, -1 = mirrored in y. Red mirrors Blue, and on the
+    // positive-x hive (if FLIP_Y_ON_POSITIVE_HIVE) both alliances flip again.
+    private double ySign() {
+        double sign = alliance > 0 ? -1 : 1;
+        if (positiveSideHive && FLIP_Y_ON_POSITIVE_HIVE) sign = -sign;
+        return sign;
     }
 
     /** True when the heading is on target and the robot is within distance tolerance. */
